@@ -213,19 +213,34 @@ app.post("/admin/ban-hwid", requireAdmin, async (req, res) => {
 // ─── LICENSE CHECK (Java client) ─────────────────────────────────────────────
 app.post("/check", async (req, res) => {
   const { hwid, email, mcUsername } = req.body;
-  if (!hwid || !email) return res.json({ valid: false, reason: "missing" });
+  if (!hwid) return res.json({ valid: false, reason: "missing" });
   const now = Date.now();
   const { rows: banned } = await pool.query("SELECT 1 FROM banned_hwids WHERE hwid=$1", [hwid]);
   if (banned.length) return res.json({ valid: false, reason: "banned" });
-  const { rows } = await pool.query(
-    "SELECT * FROM keys WHERE LOWER(email)=$1 AND blacklisted=false AND (expiry IS NULL OR expiry>$2)",
-    [email.toLowerCase(), now]
-  );
-  const key = rows[0];
+
+  let key;
+  // Try matching by email first, then fall back to HWID alone
+  if (email) {
+    const { rows } = await pool.query(
+      "SELECT * FROM keys WHERE LOWER(email)=$1 AND blacklisted=false AND (expiry IS NULL OR expiry>$2)",
+      [email.toLowerCase(), now]
+    );
+    key = rows[0];
+  }
+  // Fall back: match by HWID if email missing or no email match found
+  if (!key) {
+    const { rows } = await pool.query(
+      "SELECT * FROM keys WHERE hwid=$1 AND blacklisted=false AND (expiry IS NULL OR expiry>$2)",
+      [hwid, now]
+    );
+    key = rows[0];
+  }
+
   if (!key) return res.json({ valid: false, reason: "no_key" });
   if (key.hwid && key.hwid !== hwid) return res.json({ valid: false, reason: "hwid_mismatch" });
   if (!key.hwid) await pool.query("UPDATE keys SET hwid=$1 WHERE id=$2", [hwid, key.id]);
   if (mcUsername) await pool.query("UPDATE keys SET mc_username=$1 WHERE id=$2", [mcUsername, key.id]);
+  if (email && !key.email) await pool.query("UPDATE keys SET email=$1 WHERE id=$2", [email.toLowerCase(), key.id]);
   res.json({ valid: true });
 });
 
