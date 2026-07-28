@@ -3,393 +3,873 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pedro Debug — Client Portal</title>
+<title>Pedro Debug — Minecraft Client</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#080a0f;--surface:#0f1117;--surface2:#161922;--surface3:#1d2130;
-  --border:#232838;--border2:#2d3347;
-  --accent:#6c63ff;--accent-dim:#5750d9;--accent-glow:rgba(108,99,255,.25);
-  --green:#10d97e;--red:#ff4d6a;--yellow:#ffc947;
-  --text:#f0f2f8;--muted:#6b7494;--muted2:#8892b0;
-  --radius:14px;--radius-sm:9px;
-  --font:'Inter',system-ui,sans-serif;
+  --bg:#05070d;--surface:#0c0e16;--surface2:#13151f;--surface3:#1a1d2a;
+  --border:#1e2235;--border2:#272b3d;
+  --accent:#6c63ff;--accent-dim:#5750d9;--accent-glow:rgba(108,99,255,.22);
+  --green:#10d97e;--red:#ff4d6a;--yellow:#ffc947;--blue:#38bdf8;
+  --text:#eef0f8;--muted:#5a6080;--muted2:#8892b0;
+  --radius:14px;--radius-sm:10px;--font:'Inter',system-ui,sans-serif;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;min-height:100vh;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none;cursor:pointer}
+a:hover{text-decoration:underline}
+</style>
+<style>
+/* ── Background glows ── */
+.bg-glow{position:fixed;pointer-events:none;z-index:0;top:0;left:0}
+.bg-glow-1{width:100vw;height:70vh;background:radial-gradient(ellipse at 50% -10%,rgba(108,99,255,.13) 0%,transparent 60%)}
+.bg-glow-2{top:55vh;left:-20vw;width:70vw;height:70vh;background:radial-gradient(ellipse,rgba(56,189,248,.06) 0%,transparent 65%)}
+.bg-glow-3{top:110vh;right:-20vw;width:60vw;height:60vh;background:radial-gradient(ellipse,rgba(168,85,247,.07) 0%,transparent 65%)}
 
-/* ── Background glow ── */
-body::before{content:"";position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,rgba(108,99,255,.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+/* ── Layout ── */
+.container{max-width:1100px;margin:0 auto;padding:0 32px;position:relative;z-index:1}
 
-/* ── Screens ── */
-.screen{display:none;flex:1;align-items:center;justify-content:center;padding:24px;position:relative;z-index:1}
-.screen.active{display:flex}
-
-/* ── Card ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 38px;width:420px;max-width:95vw;position:relative;overflow:hidden}
-.card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(108,99,255,.4),transparent)}
-
-/* ── Logo ── */
-.logo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#a855f7);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0}
-.logo-text{font-size:20px;font-weight:800;letter-spacing:-.3px}
-.logo-text span{color:var(--accent)}
-.tagline{color:var(--muted);font-size:13px;margin-bottom:32px;padding-left:46px}
-
-/* ── Section title ── */
-.section-title{font-size:18px;font-weight:700;margin-bottom:6px;letter-spacing:-.2px}
-.section-sub{color:var(--muted);font-size:13px;margin-bottom:24px}
-
-/* ── Form ── */
-.field{margin-bottom:16px}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
-.field input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:12px 14px;font-size:14px;font-family:var(--font);outline:none;transition:border-color .2s,box-shadow .2s}
-.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
-.field input::placeholder{color:var(--muted)}
-
+/* ── Navbar ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 32px;height:66px;display:flex;align-items:center;gap:12px;transition:background .3s,border-color .3s,backdrop-filter .3s}
+nav.scrolled{background:rgba(5,7,13,.82);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
+.nav-logo:hover{text-decoration:none}
+.nav-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#a855f7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;flex-shrink:0}
+.nav-logo-text{font-size:17px;font-weight:800;letter-spacing:-.3px}
+.nav-logo-text span{color:var(--accent)}
+.nav-links{display:flex;gap:2px;margin-left:20px}
+.nav-link{padding:7px 13px;font-size:14px;font-weight:500;color:var(--muted2);cursor:pointer;border-radius:8px;transition:color .15s,background .15s;text-decoration:none}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,.05);text-decoration:none}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.nav-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;cursor:pointer}
+</style>
+<style>
 /* ── Buttons ── */
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:600;font-family:var(--font);padding:12px 20px;width:100%;transition:all .2s;position:relative;overflow:hidden}
-.btn:active{transform:scale(.98)}
-.btn-primary{background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;box-shadow:0 4px 20px rgba(108,99,255,.3)}
-.btn-primary:hover{box-shadow:0 6px 28px rgba(108,99,255,.45);transform:translateY(-1px)}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1.5px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
-.btn-green{background:linear-gradient(135deg,#10d97e,#06b06a);color:#fff;box-shadow:0 4px 20px rgba(16,217,126,.25)}
-.btn-green:hover{box-shadow:0 6px 28px rgba(16,217,126,.4);transform:translateY(-1px)}
-.btn-sm{width:auto;padding:10px 18px;font-size:13px}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;text-decoration:none;white-space:nowrap}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff;padding:10px 22px}
+.btn-primary:hover:not(:disabled){background:var(--accent-dim);box-shadow:0 0 20px var(--accent-glow)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2);padding:10px 22px}
+.btn-ghost:hover:not(:disabled){background:rgba(255,255,255,.06);border-color:var(--muted)}
+.btn-lg{padding:13px 30px;font-size:15px;border-radius:12px}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:8px}
 
-/* ── Switch link ── */
-.switch{text-align:center;margin-top:20px;font-size:13px;color:var(--muted)}
-.switch a{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
-.switch a:hover{text-decoration:underline}
+/* ── Hero ── */
+.hero{padding:160px 0 100px;text-align:center;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.3);border-radius:999px;padding:6px 16px;font-size:13px;font-weight:500;color:var(--accent);margin-bottom:32px}
+.badge-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero-title{font-size:clamp(36px,6vw,70px);font-weight:900;line-height:1.08;letter-spacing:-.03em;margin-bottom:24px}
+.grad{background:linear-gradient(135deg,var(--accent) 0%,#a855f7 50%,var(--blue) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{max-width:580px;margin:0 auto 36px;font-size:17px;color:var(--muted2);line-height:1.65}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:56px}
+.hero-stats{display:flex;align-items:center;justify-content:center;gap:0}
+.hstat{padding:0 36px;text-align:center}
+.hstat-num{font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--text),var(--muted2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hstat-label{font-size:13px;color:var(--muted);font-weight:500;margin-top:2px}
+.hstat-div{width:1px;height:44px;background:var(--border)}
+</style>
+<style>
+/* ── Sections ── */
+.section{padding:100px 0;position:relative}
+.section-label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.section-title{font-size:clamp(26px,4vw,42px);font-weight:900;letter-spacing:-.02em;line-height:1.15;margin-bottom:16px}
+.section-sub{font-size:16px;color:var(--muted2);line-height:1.65;max-width:560px;margin-bottom:56px}
 
-/* ── Divider ── */
-.divider{height:1px;background:var(--border);margin:24px 0}
+/* ── Features grid ── */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px;transition:border-color .2s,transform .2s,box-shadow .2s}
+.feat-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.feat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;flex-shrink:0}
+.feat-name{font-size:16px;font-weight:700;margin-bottom:8px}
+.feat-desc{font-size:13.5px;color:var(--muted2);line-height:1.6}
 
-/* ── Messages ── */
-.msg{font-size:13px;margin-top:12px;padding:10px 14px;border-radius:var(--radius-sm);display:none;font-weight:500}
-.msg.show{display:block}
-.msg.error{background:rgba(255,77,106,.1);color:var(--red);border:1px solid rgba(255,77,106,.25)}
-.msg.success{background:rgba(16,217,126,.1);color:var(--green);border:1px solid rgba(16,217,126,.25)}
-.msg.info{background:var(--surface2);color:var(--muted2);border:1px solid var(--border)}
+/* ── Undetected banner ── */
+.undetected-banner{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:48px;display:flex;gap:60px;align-items:flex-start;flex-wrap:wrap}
+.ud-badge{display:inline-block;background:rgba(16,217,126,.12);border:1px solid rgba(16,217,126,.3);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--green);margin-bottom:16px}
+.ud-title{font-size:26px;font-weight:900;letter-spacing:-.02em;margin-bottom:12px}
+.ud-sub{font-size:14px;color:var(--muted2);line-height:1.65;max-width:420px}
+.ud-left{flex:1;min-width:260px}
+.ud-checks{flex:1;min-width:220px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start;padding-top:8px}
+.ud-check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--text)}
+.check-icon{width:22px;height:22px;border-radius:50%;background:rgba(16,217,126,.15);border:1px solid rgba(16,217,126,.35);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:11px;font-weight:800;flex-shrink:0}
+</style>
+<style>
+/* ── FAQ ── */
+.faq-list{display:flex;flex-direction:column;gap:10px}
+.faq-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .2s}
+.faq-item.open{border-color:var(--border2)}
+.faq-q{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;font-size:15px;font-weight:600;cursor:pointer;user-select:none;gap:16px}
+.faq-q:hover{background:rgba(255,255,255,.03)}
+.faq-arrow{font-size:20px;color:var(--muted);transition:transform .25s;flex-shrink:0;display:inline-block}
+.faq-item.open .faq-arrow{transform:rotate(90deg);color:var(--accent)}
+.faq-a{font-size:14px;color:var(--muted2);line-height:1.7;padding:0 22px 18px;display:none}
+.faq-item.open .faq-a{display:block}
 
-/* ── Dashboard header ── */
-.dash-top{display:flex;align-items:center;gap:14px;margin-bottom:28px}
-.avatar{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#fff;flex-shrink:0}
-.user-name{font-weight:700;font-size:15px}
-.user-email{font-size:12px;color:var(--muted);margin-top:2px}
+/* ── Footer ── */
+footer{border-top:1px solid var(--border);padding:40px 0;position:relative;z-index:1}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-copy{font-size:13px;color:var(--muted)}
 
-/* ── Status cards ── */
-.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
-.stat-box{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:16px}
-.stat-box .slabel{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.stat-box .sval{font-size:15px;font-weight:700}
+/* ── Modal overlay ── */
+#modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#modalOverlay.active{display:block}
 
-/* ── Pills ── */
-.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:600}
-.pill::before{content:"";width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.pill-green{background:rgba(16,217,126,.12);color:var(--green);border:1px solid rgba(16,217,126,.3)}.pill-green::before{background:var(--green)}
-.pill-red{background:rgba(255,77,106,.12);color:var(--red);border:1px solid rgba(255,77,106,.3)}.pill-red::before{background:var(--red)}
-.pill-yellow{background:rgba(255,201,71,.12);color:var(--yellow);border:1px solid rgba(255,201,71,.3)}.pill-yellow::before{background:var(--yellow)}
-
-/* ── Key input row ── */
-.key-row{display:flex;gap:10px;margin-bottom:8px}
-.key-row input{flex:1;font-family:'Courier New',monospace;letter-spacing:.5px;font-size:15px}
-
-/* ── Download button ── */
-.dl-btn{background:linear-gradient(135deg,#10d97e,#06b06a);color:#fff;font-size:15px;padding:15px;margin-top:8px;box-shadow:0 4px 20px rgba(16,217,126,.25)}
-.dl-btn:hover:not(:disabled){box-shadow:0 6px 28px rgba(16,217,126,.4);transform:translateY(-1px)}
+/* ── Modals ── */
+.modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-48%);z-index:400;width:min(440px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:32px;flex-direction:column;gap:18px;opacity:0;transition:opacity .2s,transform .2s}
+.modal.active{display:flex;opacity:1;transform:translate(-50%,-50%)}
+.modal-close{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.08);border:none;color:var(--muted2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.modal-close:hover{background:rgba(255,255,255,.14);color:var(--text)}
+.modal-logo{display:flex;align-items:center;gap:12px}
+.modal-title{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.modal-sub{font-size:14px;color:var(--muted2);margin-top:-8px}
+</style>
+<style>
+/* ── Form fields ── */
+.field{display:flex;flex-direction:column;gap:7px}
+.field label{font-size:13px;font-weight:600;color:var(--muted2)}
+.field input,.key-row input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:11px 14px;font-family:var(--font);font-size:14px;color:var(--text);outline:none;transition:border-color .15s}
+.field input:focus,.key-row input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.field input::placeholder,.key-row input::placeholder{color:var(--muted)}
 
 /* ── Password strength ── */
-.pw-strength{margin-top:6px;height:3px;border-radius:99px;background:var(--border);overflow:hidden}
-.pw-bar{height:100%;border-radius:99px;transition:width .3s,background .3s;width:0}
+.pw-strength{height:4px;background:var(--border2);border-radius:99px;margin-top:6px;overflow:hidden}
+.pw-bar{height:100%;width:0%;border-radius:99px;transition:width .3s,background .3s}
+
+/* ── Key row ── */
+.key-row{display:flex;gap:10px;align-items:center}
+.key-row input{font-family:'Courier New',monospace;letter-spacing:.08em;font-size:15px;text-transform:uppercase}
+
+/* ── Status grid ── */
+.divider{height:1px;background:var(--border);margin:2px 0}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-box{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:16px 18px}
+.slabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.sval{font-size:15px;font-weight:700}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.04em}
+.pill-green{background:rgba(16,217,126,.15);border:1px solid rgba(16,217,126,.3);color:var(--green)}
+.pill-red{background:rgba(255,77,106,.15);border:1px solid rgba(255,77,106,.3);color:var(--red)}
+.pill-yellow{background:rgba(255,201,71,.13);border:1px solid rgba(255,201,71,.28);color:var(--yellow)}
+
+/* ── Download button ── */
+.dl-btn{background:linear-gradient(135deg,var(--green),#0fb86a);color:#000;font-weight:800;font-size:16px;padding:15px;width:100%;border-radius:12px;margin-top:4px;box-shadow:0 4px 20px rgba(16,217,126,.2);transition:opacity .18s,transform .18s}
+.dl-btn:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}
+
+/* ── Msg / Toast ── */
+.msg{min-height:18px;font-size:13px;font-weight:500;text-align:center;margin-top:-6px}
+.msg.err{color:var(--red)}
+.msg.ok{color:var(--green)}
+.switch{font-size:13px;color:var(--muted2);text-align:center}
+.switch a{color:var(--accent);cursor:pointer;font-weight:600}
+
+/* ── Avatar ── */
+.avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}
 
 /* ── Toast ── */
-#toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:13px 18px;font-size:13px;font-weight:500;opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;z-index:200;pointer-events:none;max-width:320px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
-#toast.show{opacity:1;transform:translateY(0)}
-#toast-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);z-index:500;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:11px 20px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+#toast.err #toast-dot{background:var(--red)}
 
-/* ── Loading spinner ── */
-.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+/* ── Spinner ── */
+.spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;flex-shrink:0}
+</style>
+<style>
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── Loader screen ── */
-#screenLoading .loader{display:flex;flex-direction:column;align-items:center;gap:16px}
-.logo-big{font-size:28px;font-weight:800;letter-spacing:-.5px}.logo-big span{color:var(--accent)}
+/* ── Responsive ── */
+@media(max-width:700px){
+  nav{padding:0 18px}
+  .container{padding:0 18px}
+  .hero{padding:130px 0 80px}
+  .section{padding:70px 0}
+  .features-grid{grid-template-columns:1fr}
+  .undetected-banner{padding:30px;gap:30px}
+  .ud-checks{grid-template-columns:1fr}
+  .hero-stats{flex-direction:column;gap:12px}
+  .hstat-div{display:none}
+  nav .nav-links{display:none}
+  .modal{padding:24px}
+}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
-<div class="screen active" id="screenLoading">
-  <div class="loader">
-    <div class="logo-big"><span>Pedro</span> Debug</div>
-    <div class="spinner"></div>
+<!-- Background glows -->
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<div class="bg-glow bg-glow-3"></div>
+
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav id="nav">
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">P</div>
+    <div class="nav-logo-text"><span>Pedro</span> Debug</div>
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="#features">Features</a>
+    <a class="nav-link" href="#faq">FAQ</a>
   </div>
-</div>
-
-<!-- Login -->
-<div class="screen" id="screenLogin">
-  <div class="card">
-    <div class="logo">
-      <div class="logo-icon">P</div>
-      <div class="logo-text"><span>Pedro</span> Debug</div>
-    </div>
-    <div class="tagline">Client portal — sign in to access your license</div>
-
-    <div class="section-title">Welcome back</div>
-    <div class="section-sub">Sign in to your account to continue</div>
-
-    <div class="field">
-      <label>Email address</label>
-      <input id="loginEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
-    </div>
-    <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
-    <div class="msg" id="loginMsg"></div>
-    <div class="switch">Don't have an account? <a onclick="showScreen('screenRegister')">Create one</a></div>
+  <div class="nav-right" id="navRight">
+    <button class="btn btn-ghost btn-sm" onclick="openModal('login')">Sign In</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('register')">Get Access</button>
   </div>
-</div>
+</nav>
 
-<!-- Register -->
-<div class="screen" id="screenRegister">
-  <div class="card">
-    <div class="logo">
-      <div class="logo-icon">P</div>
-      <div class="logo-text"><span>Pedro</span> Debug</div>
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero" id="home">
+  <div class="container">
+    <div class="hero-badge"><span class="badge-dot"></span> Undetected &amp; actively maintained</div>
+    <h1 class="hero-title">The most powerful<br/><span class="grad">Minecraft debug client</span></h1>
+    <p class="hero-sub">Pedro Debug gives you advanced tools for base hunting, ESP, freecam, region mapping and more — all in one lightweight Meteor addon.</p>
+    <div class="hero-btns">
+      <button class="btn btn-primary btn-lg" onclick="openModal('register')">Get Access →</button>
+      <a class="btn btn-ghost btn-lg" href="#features">See Features</a>
     </div>
-    <div class="tagline">Create an account to redeem your key</div>
-
-    <div class="section-title">Create account</div>
-    <div class="section-sub">Already have a key? Register first, then redeem it.</div>
-
-    <div class="field">
-      <label>Email address</label>
-      <input id="regEmail" type="email" placeholder="you@example.com"/>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-num">10+</div><div class="hstat-label">Modules</div></div>
+      <div class="hstat-div"></div>
+      <div class="hstat"><div class="hstat-num">100%</div><div class="hstat-label">Undetected</div></div>
+      <div class="hstat-div"></div>
+      <div class="hstat"><div class="hstat-num">1.21</div><div class="hstat-label">Minecraft</div></div>
     </div>
-    <div class="field">
-      <label>Password</label>
-      <input id="regPassword" type="password" placeholder="Min 8 chars, 1 letter + 1 number" oninput="checkPwStrength(this.value)" onkeydown="if(event.key==='Enter')doRegister()"/>
-      <div class="pw-strength"><div class="pw-bar" id="pwBar"></div></div>
-    </div>
-    <button class="btn btn-primary" onclick="doRegister()">Create Account</button>
-    <div class="msg" id="regMsg"></div>
-    <div class="switch">Already have an account? <a onclick="showScreen('screenLogin')">Sign In</a></div>
   </div>
-</div>
+</section>
 
-<!-- Redeem -->
-<div class="screen" id="screenRedeem">
-  <div class="card">
-    <div class="dash-top">
-      <div class="avatar" id="redeemAvatar">?</div>
-      <div>
-        <div class="user-name" id="redeemName">—</div>
-        <div class="user-email" id="redeemEmail">—</div>
+<!-- ═══════════════════ FEATURES ═══════════════════ -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need</h2>
+    <p class="section-sub">Pedro Debug is built on top of Meteor Client, giving you a full suite of tools designed for serious players.</p>
+    <div class="features-grid">
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#6c63ff,#a855f7)">👁</div>
+        <div class="feat-name">Storage ESP</div>
+        <div class="feat-desc">Highlights chests, shulkers, furnaces and more through walls with customizable colors and tracers.</div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto;width:auto" onclick="doLogout()">Logout</button>
-    </div>
 
-    <div class="section-title">Redeem License Key</div>
-    <div class="section-sub">Enter the key you received to activate your account.</div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ff4d6a,#f97316)">🔴</div>
+        <div class="feat-name">Redstone ESP</div>
+        <div class="feat-desc">Detects and renders repeaters, comparators, observers, TNT and redstone lamps across loaded chunks.</div>
+      </div>
 
-    <div class="key-row">
-      <input id="redeemInput" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19"
-        oninput="fmtKey(this)" onkeydown="if(event.key==='Enter')doRedeem()"/>
-      <button class="btn btn-primary btn-sm" onclick="doRedeem()">Redeem</button>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#10d97e,#38bdf8)">🗺</div>
+        <div class="feat-name">Sus Chunk Finder</div>
+        <div class="feat-desc">Analyzes chunk data for unnatural plant growth and placed deepslate to locate hidden bases.</div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ffc947,#f97316)">📷</div>
+        <div class="feat-name">Freecam</div>
+        <div class="feat-desc">Detach your camera from your player and fly freely around the world to scout areas ahead.</div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#38bdf8,#6c63ff)">🔧</div>
+        <div class="feat-name">Auto Tool</div>
+        <div class="feat-desc">Automatically switches to the best tool in your hotbar for whatever block you're currently mining.</div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#a855f7,#ec4899)">🗺</div>
+        <div class="feat-name">Region Map</div>
+        <div class="feat-desc">Visualizes region file boundaries to help understand server world structure at a glance.</div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#10d97e,#6c63ff)">🔔</div>
+        <div class="feat-name">Spawner Notifier</div>
+        <div class="feat-desc">Sends a chat alert and renders an ESP box whenever a spawner is detected in a loading chunk.</div>
+      </div>
+
+      <div class="feat-card">
+        <div class="feat-icon" style="background:linear-gradient(135deg,#ffc947,#10d97e)">⚡</div>
+        <div class="feat-name">No Render Culling</div>
+        <div class="feat-desc">Disables render culling so entities and blocks are rendered even when outside normal view range.</div>
+      </div>
+
     </div>
-    <div class="msg" id="redeemMsg"></div>
   </div>
+</section>
+
+<!-- ═══════════════════ UNDETECTED BANNER ═══════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="undetected-banner">
+      <div class="ud-left">
+        <div class="ud-badge">✅ UNDETECTED</div>
+        <div class="ud-title">Bypass every anti-cheat</div>
+        <div class="ud-sub">Pedro Debug operates entirely client-side using Fabric Loom and Meteor Client, making it invisible to server-side anti-cheat systems like NCP, AAC, Matrix and Grim.</div>
+      </div>
+      <div class="ud-checks">
+        <div class="ud-check"><span class="check-icon">✓</span> No packet manipulation</div>
+        <div class="ud-check"><span class="check-icon">✓</span> No server-side traces</div>
+        <div class="ud-check"><span class="check-icon">✓</span> Obfuscated JAR</div>
+        <div class="ud-check"><span class="check-icon">✓</span> HWID locked</div>
+        <div class="ud-check"><span class="check-icon">✓</span> Regular updates</div>
+        <div class="ud-check"><span class="check-icon">✓</span> Built on Meteor Client</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FAQ ═══════════════════ -->
+<section class="section" id="faq">
+  <div class="container" style="max-width:720px">
+    <div class="section-label">FAQ</div>
+    <h2 class="section-title">Common questions</h2>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">What Minecraft version does it support?<span class="faq-arrow">›</span></div>
+        <div class="faq-a">Pedro Debug currently supports Minecraft 1.21.1 with Fabric. Make sure you have the Meteor Client mod installed as it depends on it.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">How do I install it?<span class="faq-arrow">›</span></div>
+        <div class="faq-a">Register an account, redeem your license key, then click Download. Place the downloaded .jar in your <code style="background:var(--surface2);padding:1px 6px;border-radius:4px;font-size:13px">.minecraft/mods</code> folder alongside Meteor Client and Fabric API.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Is it safe to use on servers?<span class="faq-arrow">›</span></div>
+        <div class="faq-a">Pedro Debug uses only client-side rendering and does not send any modified packets to the server. It is undetected by all major server-side anti-cheat systems including NCP, AAC, Matrix and Grim.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I share my key?<span class="faq-arrow">›</span></div>
+        <div class="faq-a">No. Keys are bound to your email and your HWID on first launch. If a mismatch is detected the client will not load. Sharing your key results in a permanent ban.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">How do I get a key?<span class="faq-arrow">›</span></div>
+        <div class="faq-a">Keys are distributed by the developer. Contact us to purchase access. Once you have a key, register an account here and redeem it from your dashboard.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="nav-logo">
+        <div class="nav-logo-icon">P</div>
+        <div class="nav-logo-text"><span>Pedro</span> Debug</div>
+      </div>
+      <div class="footer-copy">© 2026 Pedro Debug. All rights reserved.</div>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════ MODAL OVERLAY ═══════════════════ -->
+<div id="modalOverlay" onclick="closeModal()"></div>
+
+<!-- ═══════════════════ LOGIN MODAL ═══════════════════ -->
+<div class="modal" id="modalLogin">
+  <button class="modal-close" onclick="closeModal()">✕</button>
+  <div class="modal-logo">
+    <div class="nav-logo-icon" style="width:36px;height:36px;font-size:18px">P</div>
+    <div style="font-size:17px;font-weight:800"><span style="color:var(--accent)">Pedro</span> Debug</div>
+  </div>
+  <div class="modal-title">Welcome back</div>
+  <div class="modal-sub">Sign in to your account</div>
+  <div class="field">
+    <label>Email</label>
+    <input id="loginEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+  </div>
+  <button class="btn btn-primary" id="loginBtn" style="width:100%;padding:12px;font-size:15px" onclick="doLogin()">Sign In</button>
+  <div class="msg" id="loginMsg"></div>
+  <div class="switch">No account? <a onclick="openModal('register')">Register</a></div>
 </div>
 
-<!-- Dashboard -->
-<div class="screen" id="screenDash">
-  <div class="card">
-    <div class="dash-top">
-      <div class="avatar" id="dashAvatar">?</div>
-      <div>
-        <div class="user-name" id="dashName">—</div>
-        <div class="user-email" id="dashEmail">—</div>
-      </div>
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto;width:auto" onclick="doLogout()">Logout</button>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="status-grid">
-      <div class="stat-box">
-        <div class="slabel">License</div>
-        <div class="sval" id="dashStatus">—</div>
-      </div>
-      <div class="stat-box">
-        <div class="slabel">Expires</div>
-        <div class="sval" id="dashExpiry">—</div>
-      </div>
-    </div>
-
-    <button class="btn dl-btn" id="dlBtn" onclick="doDownload()">
-      ⬇&nbsp; Download Pedro Debug
-    </button>
-    <div class="msg" id="dashMsg"></div>
+<!-- ═══════════════════ REGISTER MODAL ═══════════════════ -->
+<div class="modal" id="modalRegister">
+  <button class="modal-close" onclick="closeModal()">✕</button>
+  <div class="modal-logo">
+    <div class="nav-logo-icon" style="width:36px;height:36px;font-size:18px">P</div>
+    <div style="font-size:17px;font-weight:800"><span style="color:var(--accent)">Pedro</span> Debug</div>
   </div>
+  <div class="modal-title">Create account</div>
+  <div class="modal-sub">Register to redeem your license key</div>
+  <div class="field">
+    <label>Email</label>
+    <input id="regEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doRegister()"/>
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input id="regPassword" type="password" placeholder="Min 8 chars, 1 letter + 1 number"
+      oninput="checkPwStrength(this.value)" onkeydown="if(event.key==='Enter')doRegister()"/>
+    <div class="pw-strength"><div class="pw-bar" id="pwBar"></div></div>
+  </div>
+  <button class="btn btn-primary" id="regBtn" style="width:100%;padding:12px;font-size:15px" onclick="doRegister()">Create Account</button>
+  <div class="msg" id="regMsg"></div>
+  <div class="switch">Have an account? <a onclick="openModal('login')">Sign In</a></div>
 </div>
 
+<!-- ═══════════════════ REDEEM MODAL ═══════════════════ -->
+<div class="modal" id="modalRedeem">
+  <div class="modal-logo">
+    <div class="avatar" id="redeemAvatar">?</div>
+    <div>
+      <div style="font-weight:700;font-size:15px" id="redeemName">—</div>
+      <div style="font-size:12px;color:var(--muted)" id="redeemEmail">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="doLogout()">Logout</button>
+  </div>
+  <div class="modal-title">Redeem Key</div>
+  <div class="modal-sub">Enter your license key to activate access</div>
+  <div class="key-row">
+    <input id="redeemInput" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19"
+      oninput="fmtKey(this)" onkeydown="if(event.key==='Enter')doRedeem()"/>
+    <button class="btn btn-primary btn-sm" id="redeemBtn" onclick="doRedeem()">Redeem</button>
+  </div>
+  <div class="msg" id="redeemMsg"></div>
+</div>
+
+<!-- ═══════════════════ DASHBOARD MODAL ═══════════════════ -->
+<div class="modal" id="modalDash">
+  <div class="modal-logo">
+    <div class="avatar" id="dashAvatar">?</div>
+    <div>
+      <div style="font-weight:700;font-size:15px" id="dashName">—</div>
+      <div style="font-size:12px;color:var(--muted)" id="dashEmail">—</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="doLogout()">Logout</button>
+  </div>
+  <div class="divider"></div>
+  <div class="status-grid">
+    <div class="stat-box">
+      <div class="slabel">License</div>
+      <div class="sval" id="dashStatus">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="slabel">Expires</div>
+      <div class="sval" id="dashExpiry">—</div>
+    </div>
+  </div>
+  <button class="btn dl-btn" id="dlBtn" onclick="doDownload()">⬇ Download Pedro Debug</button>
+  <div class="msg" id="dashMsg"></div>
+</div>
+
+<!-- Toast -->
 <div id="toast"><div id="toast-dot"></div><span id="toast-text"></span></div>
 
 <script>
+/* ═══ CONFIG ═══ */
 const API = "https://pedro-license-production.up.railway.app";
-let userToken = sessionStorage.getItem("userToken") || null;
-let csrfToken = sessionStorage.getItem("csrfToken") || null;
 
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
-function showMsg(id,text,type){const e=document.getElementById(id);e.textContent=text;e.className="msg "+type+" show"}
-function hideMsg(id){const e=document.getElementById(id);e.className="msg";e.textContent=""}
-function toast(msg,color="var(--accent)"){
-  document.getElementById("toast-text").textContent=msg;
-  document.getElementById("toast-dot").style.background=color;
-  const t=document.getElementById("toast");
-  t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000);
-}
-function uf(url,opts={}){
-  const h={...(opts.headers||{}),"Content-Type":"application/json","x-user-token":userToken||"","x-csrf-token":csrfToken||""};
-  return fetch(url,{...opts,headers:h,credentials:"include"});
-}
-function fmtKey(input){
-  let v=input.value.toUpperCase().replace(/[^A-Z0-9]/g,""),out="";
-  for(let i=0;i<v.length&&i<16;i++){if(i>0&&i%4===0)out+="-";out+=v[i];}
-  input.value=out;
-}
-function checkPwStrength(pw){
-  let score=0;
-  if(pw.length>=8)score++;
-  if(pw.length>=12)score++;
-  if(/[A-Z]/.test(pw))score++;
-  if(/[0-9]/.test(pw))score++;
-  if(/[^A-Za-z0-9]/.test(pw))score++;
-  const bar=document.getElementById("pwBar");
-  const colors=["","#ff4d6a","#ffc947","#ffc947","#10d97e","#10d97e"];
-  bar.style.width=(score*20)+"%";
-  bar.style.background=colors[score]||"";
+/* ═══ STATE ═══ */
+let userToken  = sessionStorage.getItem("userToken")  || null;
+let csrfToken  = sessionStorage.getItem("csrfToken")  || null;
+let currentModal = null;
+let toastTimer = null;
+
+/* ═══ MODAL HELPERS ═══ */
+function openModal(name) {
+  closeModal(false);
+  const id = { login:"modalLogin", register:"modalRegister", redeem:"modalRedeem", dash:"modalDash" }[name];
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  document.getElementById("modalOverlay").classList.add("active");
+  el.classList.add("active");
+  currentModal = name;
+  // auto-focus first input
+  const inp = el.querySelector("input");
+  if (inp) setTimeout(() => inp.focus(), 60);
 }
 
-async function doLogin(){
-  const email=document.getElementById("loginEmail").value.trim();
-  const pw=document.getElementById("loginPassword").value;
-  hideMsg("loginMsg");
-  if(!email||!pw){showMsg("loginMsg","Fill in all fields.","error");return;}
-  const btn=document.querySelector("#screenLogin .btn-primary");
-  btn.innerHTML='<div class="spinner"></div>';btn.disabled=true;
-  try{
-    const r=await fetch(`${API}/user/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw}),credentials:"include"});
-    const d=await r.json();
-    if(!r.ok){
-      const msgs={invalid_credentials:"Wrong email or password.",account_locked:`Account locked for ${d.minutesLeft} minute(s).`};
-      showMsg("loginMsg",msgs[d.error]||"Login failed.","error");return;
+function closeModal(clearState = true) {
+  document.querySelectorAll(".modal.active").forEach(m => m.classList.remove("active"));
+  document.getElementById("modalOverlay").classList.remove("active");
+  if (clearState) currentModal = null;
+}
+
+/* ESC to close */
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/* ═══ NAVBAR SCROLL ═══ */
+const nav = document.getElementById("nav");
+window.addEventListener("scroll", () => {
+  nav.classList.toggle("scrolled", window.scrollY > 20);
+}, { passive: true });
+</script>
+<script>
+/* ═══ TOAST ═══ */
+function showToast(msg, isErr = false) {
+  const t = document.getElementById("toast");
+  const txt = document.getElementById("toast-text");
+  txt.textContent = msg;
+  t.classList.toggle("err", isErr);
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+/* ═══ MSG ═══ */
+function setMsg(id, msg, isErr = true) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "msg " + (isErr ? "err" : "ok");
+}
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ""; el.className = "msg"; }
+}
+
+/* ═══ SPINNER ═══ */
+function setLoading(btnId, loading, label) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? `<span class="spin"></span> Loading…`
+    : label;
+}
+
+/* ═══ AVATAR INITIAL ═══ */
+function avatarChar(email) {
+  return email ? email[0].toUpperCase() : "?";
+}
+
+/* ═══ FAQ ACCORDION ═══ */
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const wasOpen = item.classList.contains("open");
+  document.querySelectorAll(".faq-item.open").forEach(i => i.classList.remove("open"));
+  if (!wasOpen) item.classList.add("open");
+}
+
+/* ═══ PASSWORD STRENGTH ═══ */
+function checkPwStrength(val) {
+  const bar = document.getElementById("pwBar");
+  if (!bar) return;
+  let score = 0;
+  if (val.length >= 8) score++;
+  if (/[a-zA-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^a-zA-Z0-9]/.test(val)) score++;
+  const pct = (score / 4) * 100;
+  const colors = ["", "#ff4d6a", "#ffc947", "#ffc947", "#10d97e"];
+  bar.style.width = pct + "%";
+  bar.style.background = colors[score] || "#ff4d6a";
+}
+
+/* ═══ KEY AUTO-FORMAT ═══ */
+function fmtKey(inp) {
+  let v = inp.value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 16);
+  let out = "";
+  for (let i = 0; i < v.length; i++) {
+    if (i > 0 && i % 4 === 0) out += "-";
+    out += v[i];
+  }
+  inp.value = out;
+}
+</script>
+<script>
+/* ═══ NAV RIGHT: update based on auth state ═══ */
+function updateNav(loggedIn, email) {
+  const nr = document.getElementById("navRight");
+  if (loggedIn) {
+    nr.innerHTML = `
+      <div class="nav-avatar" title="${email}" onclick="openModal('dash')">${avatarChar(email)}</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('dash')">Dashboard</button>
+    `;
+  } else {
+    nr.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="openModal('login')">Sign In</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('register')">Get Access</button>
+    `;
+  }
+}
+
+/* ═══ POPULATE REDEEM / DASH ═══ */
+function populateUserModals(email) {
+  const ch = avatarChar(email);
+  ["redeemAvatar","dashAvatar"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = ch;
+  });
+  ["redeemName","dashName"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = email;
+  });
+  ["redeemEmail","dashEmail"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = email;
+  });
+}
+
+function populateDash(data) {
+  const statusEl  = document.getElementById("dashStatus");
+  const expiryEl  = document.getElementById("dashExpiry");
+  const dlBtn     = document.getElementById("dlBtn");
+
+  if (!data.hasKey) {
+    statusEl.innerHTML = `<span class="pill pill-yellow">No Key</span>`;
+    expiryEl.textContent = "—";
+    dlBtn.disabled = true;
+    dlBtn.style.opacity = ".45";
+  } else if (data.keyBlacklisted) {
+    statusEl.innerHTML = `<span class="pill pill-red">Banned</span>`;
+    expiryEl.textContent = "—";
+    dlBtn.disabled = true;
+    dlBtn.style.opacity = ".45";
+  } else if (data.keyExpired) {
+    statusEl.innerHTML = `<span class="pill pill-red">Expired</span>`;
+    expiryEl.textContent = "—";
+    dlBtn.disabled = true;
+    dlBtn.style.opacity = ".45";
+  } else {
+    statusEl.innerHTML = `<span class="pill pill-green">Active</span>`;
+    const exp = data.expiry;
+    expiryEl.textContent = exp ? new Date(exp).toLocaleDateString() : "Lifetime";
+    dlBtn.disabled = false;
+    dlBtn.style.opacity = "1";
+  }
+  clearMsg("dashMsg");
+}
+</script>
+<script>
+/* ═══ ERROR MESSAGE HELPERS ═══ */
+const ERR_MSGS = {
+  missing_fields:     "Please fill in all fields.",
+  invalid_email:      "Please enter a valid email address.",
+  password_too_short: "Password must be at least 8 characters.",
+  password_too_weak:  "Password must contain a letter and a number.",
+  email_taken:        "This email is already registered.",
+  invalid_credentials:"Incorrect email or password.",
+  account_locked:     "Account locked after too many failed attempts. Try again in a few minutes.",
+  too_many_attempts:  "Too many attempts. Please wait before trying again.",
+  rate_limited:       "Rate limited. Please slow down.",
+  no_key:             "Please enter a key.",
+  invalid_key:        "That key is invalid.",
+  blacklisted:        "That key has been blacklisted.",
+  already_used:       "That key has already been redeemed.",
+  already_redeemed:   "Your account already has a key redeemed.",
+  expired:            "That key has expired.",
+  not_logged_in:      "You are not logged in.",
+};
+
+function friendlyErr(body) {
+  if (!body) return "An unexpected error occurred.";
+  const code = body.error || "";
+  if (ERR_MSGS[code]) return ERR_MSGS[code];
+  if (body.minutesLeft) return `Account locked for ${body.minutesLeft} more minute(s).`;
+  return code || "An unexpected error occurred.";
+}
+
+/* ═══ API FETCH WRAPPER ═══ */
+async function apiFetch(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (userToken)  headers["x-user-token"]  = userToken;
+  if (csrfToken)  headers["x-csrf-token"]  = csrfToken;
+  const res = await fetch(API + path, { ...opts, headers, credentials: "include" });
+  let body = null;
+  try { body = await res.json(); } catch (_) {}
+  return { ok: res.ok, status: res.status, body };
+}
+</script>
+<script>
+/* ═══ LOAD & ROUTE ═══ */
+async function loadAndRoute() {
+  if (!userToken) { updateNav(false, null); return; }
+  const { ok, body } = await apiFetch("/user/me");
+  if (!ok || !body) {
+    // token invalid — clear
+    userToken = null; csrfToken = null;
+    sessionStorage.removeItem("userToken");
+    sessionStorage.removeItem("csrfToken");
+    updateNav(false, null);
+    return;
+  }
+  // refresh csrf in case it changed
+  if (body.csrfToken) {
+    csrfToken = body.csrfToken;
+    sessionStorage.setItem("csrfToken", csrfToken);
+  }
+  const email = body.email;
+  updateNav(true, email);
+  populateUserModals(email);
+
+  if (!body.hasKey) {
+    // has account but no key → open redeem
+    openModal("redeem");
+  } else {
+    // has key → open dashboard
+    populateDash(body);
+    openModal("dash");
+  }
+}
+
+/* ═══ LOGIN ═══ */
+async function doLogin() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pw    = document.getElementById("loginPassword").value;
+  clearMsg("loginMsg");
+  if (!email || !pw) { setMsg("loginMsg", "Please fill in all fields."); return; }
+
+  setLoading("loginBtn", true, "Sign In");
+  const { ok, body } = await apiFetch("/user/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password: pw }),
+  });
+  setLoading("loginBtn", false, "Sign In");
+
+  if (!ok) { setMsg("loginMsg", friendlyErr(body)); return; }
+
+  userToken = body.token;
+  csrfToken = body.csrfToken;
+  sessionStorage.setItem("userToken", userToken);
+  sessionStorage.setItem("csrfToken", csrfToken);
+
+  const userEmail = body.email;
+  updateNav(true, userEmail);
+  populateUserModals(userEmail);
+
+  // fetch /user/me for key status
+  const { ok: ok2, body: me } = await apiFetch("/user/me");
+  if (ok2 && me) {
+    if (me.csrfToken) { csrfToken = me.csrfToken; sessionStorage.setItem("csrfToken", csrfToken); }
+    if (!me.hasKey) {
+      openModal("redeem");
+    } else {
+      populateDash(me);
+      openModal("dash");
     }
-    userToken=d.token;csrfToken=d.csrfToken;
-    sessionStorage.setItem("userToken",userToken);sessionStorage.setItem("csrfToken",csrfToken);
-    await loadAndRoute();
-  }catch{showMsg("loginMsg","Cannot reach server.","error");}
-  finally{btn.innerHTML="Sign In";btn.disabled=false;}
+  } else {
+    closeModal();
+  }
+  showToast("Signed in successfully.");
+}
+</script>
+<script>
+/* ═══ REGISTER ═══ */
+async function doRegister() {
+  const email = document.getElementById("regEmail").value.trim();
+  const pw    = document.getElementById("regPassword").value;
+  clearMsg("regMsg");
+  if (!email || !pw) { setMsg("regMsg", "Please fill in all fields."); return; }
+
+  setLoading("regBtn", true, "Create Account");
+  const { ok, body } = await apiFetch("/user/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password: pw }),
+  });
+  setLoading("regBtn", false, "Create Account");
+
+  if (!ok) { setMsg("regMsg", friendlyErr(body)); return; }
+
+  setMsg("regMsg", "Account created! Signing you in…", false);
+
+  // auto-login
+  const { ok: lok, body: lbody } = await apiFetch("/user/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password: pw }),
+  });
+  if (!lok) { setMsg("regMsg", "Registered! Please sign in."); return; }
+
+  userToken = lbody.token;
+  csrfToken = lbody.csrfToken;
+  sessionStorage.setItem("userToken", userToken);
+  sessionStorage.setItem("csrfToken", csrfToken);
+
+  const userEmail = lbody.email;
+  updateNav(true, userEmail);
+  populateUserModals(userEmail);
+  openModal("redeem");
+  showToast("Account created! Redeem your key below.");
 }
 
-async function doRegister(){
-  const email=document.getElementById("regEmail").value.trim();
-  const pw=document.getElementById("regPassword").value;
-  hideMsg("regMsg");
-  if(!email||!pw){showMsg("regMsg","Fill in all fields.","error");return;}
-  if(pw.length<8){showMsg("regMsg","Password must be at least 8 characters.","error");return;}
-  if(!/[a-zA-Z]/.test(pw)||!/[0-9]/.test(pw)){showMsg("regMsg","Password must contain at least one letter and one number.","error");return;}
-  const btn=document.querySelector("#screenRegister .btn-primary");
-  btn.innerHTML='<div class="spinner"></div>';btn.disabled=true;
-  try{
-    const r=await fetch(`${API}/user/register`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw}),credentials:"include"});
-    const d=await r.json();
-    if(!r.ok){
-      const msgs={email_taken:"An account with that email already exists.",invalid_email:"Enter a valid email address.",password_too_short:"Password must be at least 8 characters.",password_too_weak:"Password must contain a letter and a number."};
-      showMsg("regMsg",msgs[d.error]||"Registration failed.","error");return;
+/* ═══ LOGOUT ═══ */
+async function doLogout() {
+  await apiFetch("/user/logout", { method: "POST" });
+  userToken = null; csrfToken = null;
+  sessionStorage.removeItem("userToken");
+  sessionStorage.removeItem("csrfToken");
+  updateNav(false, null);
+  closeModal();
+  showToast("Logged out.");
+}
+
+/* ═══ REDEEM ═══ */
+async function doRedeem() {
+  const key = document.getElementById("redeemInput").value.trim();
+  clearMsg("redeemMsg");
+  if (!key || key.length < 19) { setMsg("redeemMsg", "Please enter a valid key (XXXX-XXXX-XXXX-XXXX)."); return; }
+
+  setLoading("redeemBtn", true, "Redeem");
+  const { ok, body } = await apiFetch("/user/redeem", {
+    method: "POST",
+    body: JSON.stringify({ key }),
+  });
+  setLoading("redeemBtn", false, "Redeem");
+
+  if (!ok) { setMsg("redeemMsg", friendlyErr(body)); return; }
+
+  showToast("Key redeemed! Opening dashboard…", false);
+
+  // fetch updated user data
+  const { ok: ok2, body: me } = await apiFetch("/user/me");
+  if (ok2 && me) {
+    if (me.csrfToken) { csrfToken = me.csrfToken; sessionStorage.setItem("csrfToken", csrfToken); }
+    populateDash(me);
+    openModal("dash");
+  }
+}
+</script>
+<script>
+/* ═══ DOWNLOAD ═══ */
+async function doDownload() {
+  clearMsg("dashMsg");
+  setLoading("dlBtn", true, "⬇ Download Pedro Debug");
+
+  // Use a hidden anchor trick to trigger download via authenticated request
+  // We pass the token as a header via fetch, then create a blob URL
+  const res = await fetch(API + "/user/download", {
+    headers: { "x-user-token": userToken || "" },
+    credentials: "include",
+  });
+
+  setLoading("dlBtn", false, "⬇ Download Pedro Debug");
+
+  if (!res.ok) {
+    let body = null;
+    try { body = await res.json(); } catch(_) {}
+    if (body && body.error === "no valid key") {
+      setMsg("dashMsg", "No active license found. Please redeem a key first.");
+    } else {
+      setMsg("dashMsg", "Download failed. Please try again.");
     }
-    showMsg("regMsg","Account created! Signing you in…","success");
-    document.getElementById("loginEmail").value=email;
-    document.getElementById("loginPassword").value=pw;
-    setTimeout(doLogin,900);
-  }catch{showMsg("regMsg","Cannot reach server.","error");}
-  finally{btn.innerHTML="Create Account";btn.disabled=false;}
+    return;
+  }
+
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "pedro-debug.jar";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast("Download started!");
 }
 
-async function doLogout(){
-  await fetch(`${API}/user/logout`,{method:"POST",credentials:"include"}).catch(()=>{});
-  userToken=null;csrfToken=null;
-  sessionStorage.clear();
-  showScreen("screenLogin");
-}
-
-async function loadAndRoute(){
-  try{
-    const r=await uf(`${API}/user/me`);
-    if(r.status===401){userToken=null;sessionStorage.clear();showScreen("screenLogin");return;}
-    const d=await r.json();
-    const initial=d.email.charAt(0).toUpperCase(),name=d.email.split("@")[0];
-    ["redeemAvatar","dashAvatar"].forEach(id=>document.getElementById(id).textContent=initial);
-    ["redeemName","dashName"].forEach(id=>document.getElementById(id).textContent=name);
-    ["redeemEmail","dashEmail"].forEach(id=>document.getElementById(id).textContent=d.email);
-    if(d.csrfToken){csrfToken=d.csrfToken;sessionStorage.setItem("csrfToken",csrfToken);}
-    if(!d.hasKey){showScreen("screenRedeem");return;}
-    let statusHtml,canDl=false;
-    if(d.keyBlacklisted){statusHtml=`<span class="pill pill-red">Blacklisted</span>`;}
-    else if(d.keyExpired){statusHtml=`<span class="pill pill-red">Expired</span>`;}
-    else{statusHtml=`<span class="pill pill-green">Active</span>`;canDl=true;}
-    document.getElementById("dashStatus").innerHTML=statusHtml;
-    document.getElementById("dashExpiry").textContent=d.expiry?new Date(d.expiry).toLocaleDateString():"Lifetime ∞";
-    const dlBtn=document.getElementById("dlBtn");
-    dlBtn.disabled=!canDl;
-    showScreen("screenDash");
-  }catch{showScreen("screenLogin");}
-}
-
-async function doRedeem(){
-  const key=document.getElementById("redeemInput").value.trim();
-  hideMsg("redeemMsg");
-  if(!key||key.length<19){showMsg("redeemMsg","Enter a valid key (XXXX-XXXX-XXXX-XXXX).","error");return;}
-  const btn=document.querySelector("#screenRedeem .btn-primary");
-  btn.innerHTML='<div class="spinner"></div>';btn.disabled=true;
-  try{
-    const r=await uf(`${API}/user/redeem`,{method:"POST",body:JSON.stringify({key})});
-    const d=await r.json();
-    if(r.ok){showMsg("redeemMsg","Key redeemed! Loading your dashboard…","success");setTimeout(loadAndRoute,1200);}
-    else{
-      const msgs={invalid_key:"Invalid key. Check you typed it correctly.",already_used:"This key was already redeemed by another account.",already_redeemed:"Your account already has a key.",blacklisted:"This key has been blacklisted.",expired:"This key has expired."};
-      showMsg("redeemMsg",msgs[d.error]||"Something went wrong.","error");
-    }
-  }catch{showMsg("redeemMsg","Cannot reach server.","error");}
-  finally{btn.innerHTML="Redeem";btn.disabled=false;}
-}
-
-async function doDownload(){
-  const btn=document.getElementById("dlBtn");
-  btn.innerHTML='<div class="spinner"></div>&nbsp; Preparing…';btn.disabled=true;
-  try{
-    const r=await uf(`${API}/user/download`);
-    if(!r.ok){const d=await r.json();showMsg("dashMsg",d.error||"Download failed.","error");return;}
-    const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="pedro-debug.jar";
-    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-    toast("Download started!","var(--green)");
-  }catch{showMsg("dashMsg","Download failed.","error");}
-  finally{btn.innerHTML="⬇&nbsp; Download Pedro Debug";btn.disabled=false;}
-}
-
-(async()=>{
-  if(userToken){await loadAndRoute();}
-  else{showScreen("screenLogin");}
-})();
+/* ═══ BOOT ═══ */
+document.addEventListener("DOMContentLoaded", loadAndRoute);
 </script>
 </body>
 </html>

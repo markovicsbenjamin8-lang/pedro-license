@@ -1,48 +1,64 @@
-const express     = require("express");
+const express      = require("express");
 const { v4: uuid } = require("uuid");
-const crypto      = require("crypto");
-const bcrypt      = require("bcryptjs");
-const fs          = require("fs");
-const path        = require("path");
+const crypto       = require("crypto");
+const bcrypt       = require("bcryptjs");
+const path         = require("path");
+const fs           = require("fs");
 const cookieParser = require("cookie-parser");
-const rateLimit   = require("express-rate-limit");
-const helmet      = require("helmet");
+const rateLimit    = require("express-rate-limit");
+const helmet       = require("helmet");
+const { Pool }     = require("pg");
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme123";
 const PORT           = process.env.PORT || 3000;
-const SESSION_TTL    = 4 * 60 * 60 * 1000; // 4 hours
-const BCRYPT_ROUNDS  = 12; // high cost — harder to brute force
-
-// Cookie secret for HMAC signing — set in env for production
+const SESSION_TTL    = 4 * 60 * 60 * 1000;
+const BCRYPT_ROUNDS  = 12;
 const COOKIE_SECRET  = process.env.COOKIE_SECRET || crypto.randomBytes(32).toString("hex");
+const JAR_PATH       = path.join(__dirname, "pedro-debug-1.0.0.jar");
 
-const DB_PATH  = path.join(__dirname, "db.json");
-const JAR_PATH = path.join(__dirname, "pedro-debug-1.0.0.jar");
+// ─── DATABASE ─────────────────────────────────────────────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
 
-// ─── DB ───────────────────────────────────────────────────────────────────────
-function readDB() {
-  if (!fs.existsSync(DB_PATH)) {
-    const empty = { keys: [], accounts: [], bannedHwids: [] };
-    fs.writeFileSync(DB_PATH, JSON.stringify(empty, null, 2));
-    return empty;
-  }
-  return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS keys (
+      id TEXT PRIMARY KEY,
+      key TEXT UNIQUE NOT NULL,
+      email TEXT,
+      hwid TEXT,
+      mc_username TEXT,
+      blacklisted BOOLEAN DEFAULT false,
+      expiry BIGINT,
+      created_at BIGINT NOT NULL,
+      redeemed_at BIGINT
+    );
+    CREATE TABLE IF NOT EXISTS accounts (
+      email TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      created_at BIGINT NOT NULL,
+      failed_logins INT DEFAULT 0,
+      locked_until BIGINT
+    );
+    CREATE TABLE IF NOT EXISTS banned_hwids (
+      hwid TEXT PRIMARY KEY
+    );
+  `);
+  console.log("Database ready");
 }
-function writeDB(d) { fs.writeFileSync(DB_PATH, JSON.stringify(d, null, 2)); }
 
-// ─── SESSIONS ─────────────────────────────────────────────────────────────────
-// In-memory sessions. Each session: { email, expiresAt, csrfToken }
+// ─── SESSIONS (in-memory — fine since they expire in 4h) ─────────────────────
 const adminSessions = new Map();
 const userSessions  = new Map();
 
-function mkToken()  { return crypto.randomBytes(32).toString("hex"); }
-function mkCsrf()   { return crypto.randomBytes(24).toString("hex"); }
+function mkToken() { return crypto.randomBytes(32).toString("hex"); }
+function mkCsrf()  { return crypto.randomBytes(24).toString("hex"); }
 
-// Timing-safe token compare to prevent timing attacks
 function safeEqual(a, b) {
-  if (typeof a !== "string" || typeof b !== "string") return false;
-  if (a.length !== b.length) return false;
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
@@ -73,15 +89,12 @@ function requireUser(req, res, next) {
   req.userSession = s;
   next();
 }
-
-// CSRF: user-facing mutating routes check the csrf token
 function requireCsrf(req, res, next) {
-  const session = getUserSession(req);
-  if (!session) return res.status(401).json({ error: "not logged in" });
-  const csrfHeader = req.headers["x-csrf-token"];
-  if (!csrfHeader || !safeEqual(csrfHeader, session.csrfToken))
+  const s = getUserSession(req);
+  if (!s) return res.status(401).json({ error: "not logged in" });
+  if (!safeEqual(req.headers["x-csrf-token"] || "", s.csrfToken))
     return res.status(403).json({ error: "invalid csrf token" });
-  req.userSession = session;
+  req.userSession = s;
   next();
 }
 
@@ -90,47 +103,24 @@ function genKey() {
   return `${s()}-${s()}-${s()}-${s()}`;
 }
 
-// Cookie options — secure in production
 const cookieOpts = (maxAge) => ({
-  httpOnly: true,
-  signed: true,
-  sameSite: "strict",
-  secure: process.env.NODE_ENV === "production",
-  maxAge,
+  httpOnly: true, signed: true, sameSite: "strict",
+  secure: process.env.NODE_ENV === "production", maxAge,
 });
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 const app = express();
-
-// Helmet sets secure HTTP headers
-app.use(helmet({
-  contentSecurityPolicy: false, // we serve inline HTML
-}));
-
-app.use(express.json({ limit: "10kb" })); // prevent large payload attacks
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser(COOKIE_SECRET));
+app.set("trust proxy", 1);
 
-// Serve static files
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "user.html")));
+app.get("/",      (req, res) => res.sendFile(path.join(__dirname, "user.html")));
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 
-// ─── RATE LIMITERS ────────────────────────────────────────────────────────────
-// Auth endpoints: max 10 attempts per 15 minutes per IP
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: "too_many_attempts" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// General API: 100 per minute
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  message: { error: "rate_limited" },
-});
-
+// ─── RATE LIMITING ────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { error: "too_many_attempts" } });
+const apiLimiter  = rateLimit({ windowMs: 60*1000, max: 100, message: { error: "rate_limited" } });
 app.use("/user/login",    authLimiter);
 app.use("/user/register", authLimiter);
 app.use("/auth/login",    authLimiter);
@@ -138,12 +128,9 @@ app.use("/api/",          apiLimiter);
 
 // ─── ADMIN AUTH ───────────────────────────────────────────────────────────────
 app.post("/auth/login", (req, res) => {
-  const { password } = req.body;
-  // Timing-safe compare against admin password
+  const provided = Buffer.from(req.body.password || "");
   const expected = Buffer.from(ADMIN_PASSWORD);
-  const provided = Buffer.from(password || "");
-  // Pad to same length to avoid length timing leak
-  const match = password && password.length === ADMIN_PASSWORD.length &&
+  const match = provided.length === expected.length &&
     crypto.timingSafeEqual(expected, provided);
   if (!match) return res.status(403).json({ error: "wrong password" });
   const token = mkToken();
@@ -151,7 +138,6 @@ app.post("/auth/login", (req, res) => {
   res.cookie("adminToken", token, cookieOpts(SESSION_TTL));
   res.json({ token });
 });
-
 app.post("/auth/logout", (req, res) => {
   const t = req.signedCookies?.adminToken;
   if (t) adminSessions.delete(t);
@@ -159,176 +145,135 @@ app.post("/auth/logout", (req, res) => {
   res.json({ success: true });
 });
 
-// ─── ADMIN API ────────────────────────────────────────────────────────────────
-app.get("/admin/keys", requireAdmin, (req, res) => res.json(readDB().keys));
-
-app.post("/admin/add-key", requireAdmin, (req, res) => {
-  const db = readDB();
-  const entry = {
-    id: uuid(), key: genKey(),
-    email: null, hwid: null, mcUsername: null,
-    blacklisted: false,
-    expiry: req.body.expiry ?? null,
-    createdAt: Date.now(), redeemedAt: null,
-  };
-  db.keys.push(entry);
-  writeDB(db);
-  res.json(entry);
-});
-
-app.post("/admin/blacklist/:id", requireAdmin, (req, res) => {
-  const db = readDB();
-  const k = db.keys.find(k => k.id === req.params.id);
-  if (!k) return res.status(404).json({ error: "not found" });
-  k.blacklisted = req.body.blacklisted !== false;
-  writeDB(db);
-  res.json(k);
-});
-
-app.delete("/admin/key/:id", requireAdmin, (req, res) => {
-  const db = readDB();
-  const i = db.keys.findIndex(k => k.id === req.params.id);
-  if (i === -1) return res.status(404).json({ error: "not found" });
-  db.keys.splice(i, 1);
-  writeDB(db);
-  res.json({ success: true });
-});
-
-app.put("/admin/key/:id/expiry", requireAdmin, (req, res) => {
-  const db = readDB();
-  const k = db.keys.find(k => k.id === req.params.id);
-  if (!k) return res.status(404).json({ error: "not found" });
-  k.expiry = req.body.expiry ?? null;
-  writeDB(db);
-  res.json(k);
-});
-
-app.get("/admin/hwids", requireAdmin, (req, res) => {
-  const db = readDB();
-  res.json(db.keys.filter(k => k.hwid).map(k => ({
-    id: k.id, key: k.key,
-    hwid: k.hwid, email: k.email, mcUsername: k.mcUsername,
-    blacklisted: k.blacklisted,
-    banned: db.bannedHwids.includes(k.hwid),
+// ─── ADMIN: KEYS ─────────────────────────────────────────────────────────────
+app.get("/admin/keys", requireAdmin, async (req, res) => {
+  const { rows } = await pool.query("SELECT * FROM keys ORDER BY created_at DESC");
+  res.json(rows.map(r => ({
+    id: r.id, key: r.key, email: r.email, hwid: r.hwid,
+    mcUsername: r.mc_username, blacklisted: r.blacklisted,
+    expiry: r.expiry ? Number(r.expiry) : null,
+    createdAt: Number(r.created_at),
+    redeemedAt: r.redeemed_at ? Number(r.redeemed_at) : null,
   })));
 });
 
-app.post("/admin/ban-hwid", requireAdmin, (req, res) => {
+app.post("/admin/add-key", requireAdmin, async (req, res) => {
+  const id  = uuid(), key = genKey(), now = Date.now();
+  const exp = req.body.expiry ?? null;
+  await pool.query(
+    "INSERT INTO keys (id,key,blacklisted,expiry,created_at) VALUES ($1,$2,false,$3,$4)",
+    [id, key, exp, now]
+  );
+  res.json({ id, key, email: null, hwid: null, mcUsername: null, blacklisted: false, expiry: exp, createdAt: now });
+});
+
+app.post("/admin/blacklist/:id", requireAdmin, async (req, res) => {
+  const val = req.body.blacklisted !== false;
+  const { rows } = await pool.query(
+    "UPDATE keys SET blacklisted=$1 WHERE id=$2 RETURNING *", [val, req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: "not found" });
+  res.json({ ...rows[0], mcUsername: rows[0].mc_username });
+});
+
+app.delete("/admin/key/:id", requireAdmin, async (req, res) => {
+  await pool.query("DELETE FROM keys WHERE id=$1", [req.params.id]);
+  res.json({ success: true });
+});
+
+app.put("/admin/key/:id/expiry", requireAdmin, async (req, res) => {
+  const { rows } = await pool.query(
+    "UPDATE keys SET expiry=$1 WHERE id=$2 RETURNING *", [req.body.expiry ?? null, req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: "not found" });
+  res.json(rows[0]);
+});
+
+// ─── ADMIN: HWIDS ─────────────────────────────────────────────────────────────
+app.get("/admin/hwids", requireAdmin, async (req, res) => {
+  const { rows: keys }  = await pool.query("SELECT * FROM keys WHERE hwid IS NOT NULL");
+  const { rows: banned } = await pool.query("SELECT hwid FROM banned_hwids");
+  const bannedSet = new Set(banned.map(b => b.hwid));
+  res.json(keys.map(k => ({
+    id: k.id, key: k.key, hwid: k.hwid, email: k.email,
+    mcUsername: k.mc_username, blacklisted: k.blacklisted,
+    banned: bannedSet.has(k.hwid),
+  })));
+});
+
+app.post("/admin/ban-hwid", requireAdmin, async (req, res) => {
   const { hwid, ban } = req.body;
   if (!hwid) return res.status(400).json({ error: "hwid required" });
-  const db = readDB();
   if (ban !== false) {
-    if (!db.bannedHwids.includes(hwid)) db.bannedHwids.push(hwid);
+    await pool.query("INSERT INTO banned_hwids (hwid) VALUES ($1) ON CONFLICT DO NOTHING", [hwid]);
   } else {
-    db.bannedHwids = db.bannedHwids.filter(h => h !== hwid);
+    await pool.query("DELETE FROM banned_hwids WHERE hwid=$1", [hwid]);
   }
-  writeDB(db);
   res.json({ success: true });
 });
 
 // ─── LICENSE CHECK (Java client) ─────────────────────────────────────────────
-app.post("/check", (req, res) => {
+app.post("/check", async (req, res) => {
   const { hwid, email, mcUsername } = req.body;
   if (!hwid || !email) return res.json({ valid: false, reason: "missing" });
-  const db = readDB(), now = Date.now();
-  if (db.bannedHwids.includes(hwid)) return res.json({ valid: false, reason: "banned" });
-  const key = db.keys.find(k =>
-    k.email && k.email.toLowerCase() === email.toLowerCase() &&
-    !k.blacklisted && (k.expiry === null || k.expiry > now)
+  const now = Date.now();
+  const { rows: banned } = await pool.query("SELECT 1 FROM banned_hwids WHERE hwid=$1", [hwid]);
+  if (banned.length) return res.json({ valid: false, reason: "banned" });
+  const { rows } = await pool.query(
+    "SELECT * FROM keys WHERE LOWER(email)=$1 AND blacklisted=false AND (expiry IS NULL OR expiry>$2)",
+    [email.toLowerCase(), now]
   );
+  const key = rows[0];
   if (!key) return res.json({ valid: false, reason: "no_key" });
   if (key.hwid && key.hwid !== hwid) return res.json({ valid: false, reason: "hwid_mismatch" });
-  if (!key.hwid) { key.hwid = hwid; writeDB(db); }
-  if (mcUsername && key.mcUsername !== mcUsername) { key.mcUsername = mcUsername; writeDB(db); }
+  if (!key.hwid) await pool.query("UPDATE keys SET hwid=$1 WHERE id=$2", [hwid, key.id]);
+  if (mcUsername) await pool.query("UPDATE keys SET mc_username=$1 WHERE id=$2", [mcUsername, key.id]);
   res.json({ valid: true });
 });
 
 // ─── USER AUTH ────────────────────────────────────────────────────────────────
-
-// Register — strict email validation, bcrypt 12 rounds
 app.post("/user/register", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "missing_fields" });
-
-  // Basic email format check
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    return res.status(400).json({ error: "invalid_email" });
-
-  if (password.length < 8)
-    return res.status(400).json({ error: "password_too_short" });
-
-  // Password strength: must have a letter and a number
-  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
-    return res.status(400).json({ error: "password_too_weak" });
-
-  const db = readDB();
-  if (!db.accounts) db.accounts = [];
-
-  if (db.accounts.find(a => a.email === email.toLowerCase()))
-    return res.status(400).json({ error: "email_taken" });
-
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "invalid_email" });
+  if (password.length < 8)  return res.status(400).json({ error: "password_too_short" });
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) return res.status(400).json({ error: "password_too_weak" });
+  const { rows } = await pool.query("SELECT 1 FROM accounts WHERE email=$1", [email.toLowerCase()]);
+  if (rows.length) return res.status(400).json({ error: "email_taken" });
   const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-
-  db.accounts.push({
-    email: email.toLowerCase(),
-    passwordHash: hash,
-    createdAt: Date.now(),
-    failedLogins: 0,
-    lockedUntil: null,
-  });
-  writeDB(db);
+  await pool.query("INSERT INTO accounts (email,password_hash,created_at) VALUES ($1,$2,$3)",
+    [email.toLowerCase(), hash, Date.now()]);
   res.json({ success: true });
 });
 
-// Login — account lockout after 5 failed attempts
 app.post("/user/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "missing_fields" });
-
-  const db = readDB();
-  if (!db.accounts) return res.status(401).json({ error: "invalid_credentials" });
-
-  const account = db.accounts.find(a => a.email === email.toLowerCase());
-
-  // Always run bcrypt even if account not found — prevents timing-based
-  // email enumeration attacks
-  const dummyHash = "$2a$12$invalidhashfortimingatttacks00000000000000000000000000000";
-  const hashToCheck = account ? account.passwordHash : dummyHash;
-
-  // Check lockout
-  if (account && account.lockedUntil && Date.now() < account.lockedUntil) {
-    const mins = Math.ceil((account.lockedUntil - Date.now()) / 60000);
+  const { rows } = await pool.query("SELECT * FROM accounts WHERE email=$1", [email.toLowerCase()]);
+  const account = rows[0];
+  const dummyHash = "$2a$12$invalidhashfortimingattacks0000000000000000000000000000000";
+  const hashToCheck = account ? account.password_hash : dummyHash;
+  if (account && account.locked_until && Date.now() < Number(account.locked_until)) {
+    const mins = Math.ceil((Number(account.locked_until) - Date.now()) / 60000);
     return res.status(429).json({ error: "account_locked", minutesLeft: mins });
   }
-
   const ok = await bcrypt.compare(password, hashToCheck);
-
   if (!account || !ok) {
     if (account) {
-      account.failedLogins = (account.failedLogins || 0) + 1;
-      if (account.failedLogins >= 5) {
-        account.lockedUntil = Date.now() + 15 * 60 * 1000; // lock 15 min
-        account.failedLogins = 0;
+      const fails = (account.failed_logins || 0) + 1;
+      if (fails >= 5) {
+        await pool.query("UPDATE accounts SET failed_logins=0,locked_until=$1 WHERE email=$2",
+          [Date.now() + 15*60*1000, account.email]);
+      } else {
+        await pool.query("UPDATE accounts SET failed_logins=$1 WHERE email=$2", [fails, account.email]);
       }
-      writeDB(db);
     }
     return res.status(401).json({ error: "invalid_credentials" });
   }
-
-  // Successful login — reset lockout
-  account.failedLogins = 0;
-  account.lockedUntil  = null;
-  writeDB(db);
-
-  const token    = mkToken();
-  const csrfToken = mkCsrf();
-  userSessions.set(token, {
-    email: account.email,
-    expiresAt: Date.now() + SESSION_TTL,
-    csrfToken,
-  });
+  await pool.query("UPDATE accounts SET failed_logins=0,locked_until=NULL WHERE email=$1", [account.email]);
+  const token = mkToken(), csrfToken = mkCsrf();
+  userSessions.set(token, { email: account.email, expiresAt: Date.now() + SESSION_TTL, csrfToken });
   res.cookie("userToken", token, cookieOpts(SESSION_TTL));
-  // CSRF token goes in response body (not httpOnly) so JS can read and send it
   res.json({ token, csrfToken, email: account.email });
 });
 
@@ -339,57 +284,59 @@ app.post("/user/logout", (req, res) => {
   res.json({ success: true });
 });
 
-// Me
-app.get("/user/me", requireUser, (req, res) => {
-  const db = readDB(), now = Date.now();
-  const key = db.keys.find(k =>
-    k.email && k.email.toLowerCase() === req.userSession.email
+app.get("/user/me", requireUser, async (req, res) => {
+  const now = Date.now();
+  const { rows } = await pool.query(
+    "SELECT * FROM keys WHERE LOWER(email)=$1", [req.userSession.email]
   );
+  const key = rows[0];
   res.json({
     email: req.userSession.email,
     csrfToken: req.userSession.csrfToken,
     hasKey: !!key,
     keyBlacklisted: key?.blacklisted ?? false,
-    keyExpired: key ? (key.expiry !== null && key.expiry < now) : false,
-    expiry: key?.expiry ?? null,
+    keyExpired: key ? (key.expiry !== null && Number(key.expiry) < now) : false,
+    expiry: key?.expiry ? Number(key.expiry) : null,
   });
 });
 
-// Redeem — requires CSRF
-app.post("/user/redeem", requireCsrf, (req, res) => {
+app.post("/user/redeem", requireCsrf, async (req, res) => {
   const keyCode = (req.body.key || "").trim().toUpperCase();
   if (!keyCode) return res.status(400).json({ error: "no_key" });
-  const db = readDB(), now = Date.now();
-  const email = req.userSession.email;
-  if (db.keys.find(k => k.email && k.email.toLowerCase() === email))
-    return res.status(400).json({ error: "already_redeemed" });
-  const entry = db.keys.find(k => k.key === keyCode);
-  if (!entry)                                      return res.status(400).json({ error: "invalid_key" });
-  if (entry.blacklisted)                           return res.status(400).json({ error: "blacklisted" });
-  if (entry.email)                                 return res.status(400).json({ error: "already_used" });
-  if (entry.expiry !== null && entry.expiry < now) return res.status(400).json({ error: "expired" });
-  entry.email = email;
-  entry.redeemedAt = now;
-  writeDB(db);
+  const now = Date.now(), email = req.userSession.email;
+  const { rows: existing } = await pool.query(
+    "SELECT 1 FROM keys WHERE LOWER(email)=$1", [email]
+  );
+  if (existing.length) return res.status(400).json({ error: "already_redeemed" });
+  const { rows } = await pool.query("SELECT * FROM keys WHERE key=$1", [keyCode]);
+  const entry = rows[0];
+  if (!entry)                                          return res.status(400).json({ error: "invalid_key" });
+  if (entry.blacklisted)                               return res.status(400).json({ error: "blacklisted" });
+  if (entry.email)                                     return res.status(400).json({ error: "already_used" });
+  if (entry.expiry !== null && Number(entry.expiry) < now) return res.status(400).json({ error: "expired" });
+  await pool.query("UPDATE keys SET email=$1,redeemed_at=$2 WHERE id=$3", [email, now, entry.id]);
   res.json({ success: true });
 });
 
-// Download — requires valid session + key
-app.get("/user/download", requireUser, (req, res) => {
-  const db = readDB(), now = Date.now();
-  const key = db.keys.find(k =>
-    k.email && k.email.toLowerCase() === req.userSession.email &&
-    !k.blacklisted && (k.expiry === null || k.expiry > now)
+app.get("/user/download", requireUser, async (req, res) => {
+  const now = Date.now();
+  const { rows } = await pool.query(
+    "SELECT 1 FROM keys WHERE LOWER(email)=$1 AND blacklisted=false AND (expiry IS NULL OR expiry>$2)",
+    [req.userSession.email, now]
   );
-  if (!key) return res.status(403).json({ error: "no valid key" });
+  if (!rows.length) return res.status(403).json({ error: "no valid key" });
   if (!fs.existsSync(JAR_PATH)) return res.status(404).json({ error: "jar not found" });
   res.download(JAR_PATH, "pedro-debug.jar");
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Pedro Debug server running on port ${PORT}`);
-  console.log(`Admin dashboard : http://localhost:${PORT}/admin`);
-  console.log(`User portal     : http://localhost:${PORT}/`);
-  console.log(`Admin password  : ${ADMIN_PASSWORD}`);
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Admin: http://localhost:${PORT}/admin`);
+    console.log(`User:  http://localhost:${PORT}/`);
+  });
+}).catch(err => {
+  console.error("Failed to init DB:", err);
+  process.exit(1);
 });
