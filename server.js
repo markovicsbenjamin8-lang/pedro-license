@@ -339,7 +339,29 @@ app.get("/user/download", requireUser, async (req, res) => {
   );
   if (!rows.length) return res.status(403).json({ error: "no valid key" });
   if (!fs.existsSync(JAR_PATH)) return res.status(404).json({ error: "jar not found" });
-  res.download(JAR_PATH, "pedro-debug.jar");
+
+  // Inject the user's email into the JAR as a resource file
+  // so the client can read it without needing an external file
+  try {
+    const AdmZip = require("adm-zip");
+    const zip = new AdmZip(JAR_PATH);
+
+    // Add/overwrite pedro-debug-auth.txt inside the JAR
+    zip.deleteFile("pedro-debug-auth.txt");
+    zip.addFile("pedro-debug-auth.txt",
+      Buffer.from(req.userSession.email, "utf8"),
+      "User auth email"
+    );
+
+    const modifiedJar = zip.toBuffer();
+    res.setHeader("Content-Disposition", "attachment; filename=pedro-debug.jar");
+    res.setHeader("Content-Type", "application/java-archive");
+    res.setHeader("Content-Length", modifiedJar.length);
+    res.send(modifiedJar);
+  } catch (e) {
+    // Fallback: serve original JAR if zip manipulation fails
+    res.download(JAR_PATH, "pedro-debug.jar");
+  }
 });
 
 // ─── START ────────────────────────────────────────────────────────────────────
