@@ -128,11 +128,9 @@ app.use("/api/",          apiLimiter);
 
 // ─── ADMIN AUTH ───────────────────────────────────────────────────────────────
 app.post("/auth/login", (req, res) => {
-  const provided = Buffer.from(req.body.password || "");
-  const expected = Buffer.from(ADMIN_PASSWORD);
-  const match = provided.length === expected.length &&
-    crypto.timingSafeEqual(expected, provided);
-  if (!match) return res.status(403).json({ error: "wrong password" });
+  const provided = (req.body.password || "").trim();
+  if (provided !== ADMIN_PASSWORD)
+    return res.status(403).json({ error: "wrong password" });
   const token = mkToken();
   adminSessions.set(token, { expiresAt: Date.now() + SESSION_TTL });
   res.cookie("adminToken", token, cookieOpts(SESSION_TTL));
