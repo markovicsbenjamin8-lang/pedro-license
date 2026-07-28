@@ -127,6 +127,10 @@ app.use("/auth/login",    authLimiter);
 app.use("/api/",          apiLimiter);
 
 // ─── ADMIN AUTH ───────────────────────────────────────────────────────────────
+app.get("/debug-pw", (req, res) => {
+  res.json({ pw: process.env.ADMIN_PASSWORD || "NOT SET", len: (process.env.ADMIN_PASSWORD||"").length });
+});
+
 app.post("/auth/login", (req, res) => {
   const provided = (req.body.password || "").trim();
   if (provided !== ADMIN_PASSWORD)
