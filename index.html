@@ -4,126 +4,162 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Pedro Debug — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0d0f;--surface:#16181d;--surface2:#1e2028;--border:#2a2d38;
-  --accent:#ff6400;--accent-dim:#c44d00;--green:#22c55e;--red:#ef4444;
-  --yellow:#f59e0b;--text:#e8eaf0;--muted:#6b7280;--radius:8px;
+  --bg:#080a0f;--surface:#0f1117;--surface2:#161922;--surface3:#1d2130;
+  --border:#232838;--border2:#2d3347;
+  --accent:#6c63ff;--accent-dim:#5750d9;--accent-glow:rgba(108,99,255,.2);
+  --green:#10d97e;--red:#ff4d6a;--yellow:#ffc947;
+  --text:#f0f2f8;--muted:#6b7494;--muted2:#8892b0;
+  --radius:14px;--radius-sm:9px;--font:'Inter',system-ui,sans-serif;
 }
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+body::before{content:"";position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:900px;height:600px;background:radial-gradient(ellipse,rgba(108,99,255,.06) 0%,transparent 70%);pointer-events:none;z-index:0}
+
 /* Login */
-#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px 32px;width:360px;max-width:95vw}
-.login-box h2{font-size:20px;font-weight:700;margin-bottom:6px}.login-box h2 span{color:var(--accent)}
-.login-box p{color:var(--muted);font-size:13px;margin-bottom:24px}
-.login-error{color:var(--red);font-size:12px;margin-top:10px;min-height:16px}
-#appShell{display:none}
-/* Header */
-header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;gap:12px}
-header h1{font-size:18px;font-weight:700}header h1 span{color:var(--accent)}
-.badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px}
-/* Tabs */
-.tabs{display:flex;gap:2px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border)}
-.tab{padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:color .15s,border-color .15s}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-panel{display:none;padding:28px;max-width:1200px;margin:0 auto}
-.tab-panel.active{display:block}
-/* Cards */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:24px}
-.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}
-/* Form */
-.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:160px}
-label{font-size:12px;color:var(--muted)}
-input,select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 11px;font-size:13px;outline:none;transition:border-color .15s}
-input:focus,select:focus{border-color:var(--accent)}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative;z-index:1}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:44px 40px;width:380px;max-width:95vw;position:relative;overflow:hidden}
+.login-card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(108,99,255,.5),transparent)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#a855f7);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff}
+.logo-text{font-size:21px;font-weight:800;letter-spacing:-.3px}.logo-text span{color:var(--accent)}
+.logo-sub{color:var(--muted);font-size:13px;margin-bottom:30px;padding-left:48px}
+.badge{background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;letter-spacing:.5px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px}
+input,select{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px 13px;font-size:13px;font-family:var(--font);outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
 input::placeholder{color:var(--muted)}
-/* Buttons */
-.btn{border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;padding:8px 16px;transition:opacity .15s,transform .1s;white-space:nowrap}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-dim)}
-.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{opacity:.85}
-.btn-success{background:var(--green);color:#fff}.btn-success:hover{opacity:.85}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent)}
-.btn-sm{padding:5px 10px;font-size:12px}
+.login-err{color:var(--red);font-size:12px;margin-top:10px;min-height:16px;font-weight:500}
+#appShell{display:none;position:relative;z-index:1}
+
+/* Header */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;backdrop-filter:blur(10px)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+#srvStatus{font-size:12px;font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border)}
+.tab{padding:14px 22px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);transition:color .15s,border-color .15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--muted2)}
+
+/* Content */
+.tab-panel{display:none;padding:28px;max-width:1280px;margin:0 auto}
+.tab-panel.active{display:block}
+
 /* Stats */
-.stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px}
-.stat-card{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
-.stat-value{font-size:26px;font-weight:700}.stat-label{font-size:11px;color:var(--muted);margin-top:2px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::after{content:"";position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card:nth-child(1)::after{background:linear-gradient(90deg,var(--accent),#a855f7)}
+.stat-card:nth-child(2)::after{background:linear-gradient(90deg,var(--green),#06b06a)}
+.stat-card:nth-child(3)::after{background:linear-gradient(90deg,var(--yellow),#f59e0b)}
+.stat-card:nth-child(4)::after{background:linear-gradient(90deg,var(--red),#dc2626)}
+.stat-value{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+/* Cards */
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px}
+
+/* Buttons */
+.btn{border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font);padding:9px 16px;transition:all .2s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;box-shadow:0 3px 14px rgba(108,99,255,.3)}
+.btn-primary:hover{box-shadow:0 5px 20px rgba(108,99,255,.4);transform:translateY(-1px)}
+.btn-danger{background:rgba(255,77,106,.15);color:var(--red);border:1px solid rgba(255,77,106,.3)}.btn-danger:hover{background:rgba(255,77,106,.25)}
+.btn-success{background:rgba(16,217,126,.15);color:var(--green);border:1px solid rgba(16,217,126,.3)}.btn-success:hover{background:rgba(16,217,126,.25)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1.5px solid var(--border)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:5px 11px;font-size:12px}
+
+/* Form row */
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:150px}
+.form-group label{font-size:11px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.4px}
+
+/* Toolbar */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+
 /* Table */
-.table-wrap{overflow-x:auto}
+.table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse}
-thead th{text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:8px 12px;border-bottom:1px solid var(--border)}
+thead th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:last-child{border-bottom:none}
-tbody tr:hover{background:var(--surface2)}
-tbody td{padding:10px 12px;vertical-align:middle}
-.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
-.pill-green{background:#14532d55;color:var(--green);border:1px solid #22c55e44}
-.pill-red{background:#7f1d1d55;color:var(--red);border:1px solid #ef444444}
-.pill-yellow{background:#78350f55;color:var(--yellow);border:1px solid #f59e0b44}
-.key-mono{font-family:'Consolas','Courier New',monospace;font-size:12px;background:var(--surface2);padding:2px 7px;border-radius:4px;border:1px solid var(--border);cursor:pointer}
-.key-mono:hover{border-color:var(--accent)}
-.actions-cell{display:flex;gap:6px;flex-wrap:wrap}
+tbody tr:hover{background:rgba(108,99,255,.04)}
+tbody td{padding:11px 14px;vertical-align:middle}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.pill::before{content:"";width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.pill-green{background:rgba(16,217,126,.1);color:var(--green);border:1px solid rgba(16,217,126,.25)}.pill-green::before{background:var(--green)}
+.pill-red{background:rgba(255,77,106,.1);color:var(--red);border:1px solid rgba(255,77,106,.25)}.pill-red::before{background:var(--red)}
+.pill-yellow{background:rgba(255,201,71,.1);color:var(--yellow);border:1px solid rgba(255,201,71,.25)}.pill-yellow::before{background:var(--yellow)}
+.key-mono{font-family:'Courier New',monospace;font-size:12px;background:var(--surface2);padding:3px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;letter-spacing:.3px}
+.key-mono:hover{border-color:var(--accent);color:var(--accent)}
 .small-text{font-size:12px;color:var(--muted)}
-/* Toolbar */
-.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
-.search-wrap{position:relative;flex:1;min-width:180px}
-.search-wrap input{width:100%;padding-left:10px}
+.actions-cell{display:flex;gap:6px;flex-wrap:wrap}
+.empty{text-align:center;padding:44px;color:var(--muted);font-size:13px}
+
 /* Toast */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 18px;font-size:13px;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;z-index:200;pointer-events:none;max-width:320px}
+#toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 18px;font-size:13px;font-weight:500;opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;z-index:200;pointer-events:none;max-width:320px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
 #toast.show{opacity:1;transform:translateY(0)}
-.empty{text-align:center;padding:40px;color:var(--muted)}
+#toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 </style>
 </head>
 <body>
 
 <!-- Login -->
 <div id="loginScreen">
-  <div class="login-box">
-    <h2><span>Pedro</span> Debug</h2>
-    <p>Admin dashboard — restricted access</p>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>Password</label>
-      <input id="loginPw" type="password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()" autofocus/>
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">P</div>
+      <div class="logo-text"><span>Pedro</span> Debug</div>
     </div>
-    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">Login</button>
-    <div class="login-error" id="loginErr"></div>
+    <div class="logo-sub">Admin dashboard — restricted access</div>
+    <div class="field">
+      <label>Admin Password</label>
+      <input id="loginPw" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" autofocus/>
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()">Login to Dashboard</button>
+    <div class="login-err" id="loginErr"></div>
   </div>
 </div>
 
-<!-- App -->
+<!-- App shell -->
 <div id="appShell">
   <header>
-    <h1><span>Pedro</span> Debug</h1>
+    <div class="logo-icon" style="width:32px;height:32px;font-size:16px;border-radius:8px">P</div>
+    <span style="font-size:16px;font-weight:800;letter-spacing:-.2px"><span style="color:var(--accent)">Pedro</span> Debug</span>
     <span class="badge">ADMIN</span>
     <div class="header-right">
-      <span id="srvStatus">● connecting…</span>
+      <span id="srvStatus" style="font-size:12px">● connecting…</span>
       <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
     </div>
   </header>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('keys',this)">License Keys</div>
-    <div class="tab" onclick="switchTab('hwids',this)">HWIDs</div>
+    <div class="tab active" onclick="switchTab('keys',this)">🔑 License Keys</div>
+    <div class="tab" onclick="switchTab('hwids',this)">🖥 HWIDs</div>
   </div>
 
   <!-- Keys tab -->
   <div class="tab-panel active" id="tab-keys">
     <div class="stats">
       <div class="stat-card"><div class="stat-value" id="sTotal">—</div><div class="stat-label">Total Keys</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--green)" id="sActive">—</div><div class="stat-label">Active</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--yellow)" id="sRedeemed">—</div><div class="stat-label">Redeemed</div></div>
-      <div class="stat-card"><div class="stat-value" style="color:var(--red)" id="sBlacklisted">—</div><div class="stat-label">Blacklisted</div></div>
+      <div class="stat-card"><div class="stat-value" id="sActive">—</div><div class="stat-label">Active</div></div>
+      <div class="stat-card"><div class="stat-value" id="sRedeemed">—</div><div class="stat-label">Redeemed</div></div>
+      <div class="stat-card"><div class="stat-value" id="sBlacklisted">—</div><div class="stat-label">Blacklisted</div></div>
     </div>
 
     <div class="card">
       <div class="card-title">Generate New Key</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Expiry Type</label>
+          <label>Expiry</label>
           <select id="expiryType" onchange="toggleExpiry()">
             <option value="lifetime">Lifetime</option>
             <option value="date">Specific Date</option>
@@ -131,21 +167,21 @@ tbody td{padding:10px 12px;vertical-align:middle}
           </select>
         </div>
         <div class="form-group" id="dateGroup" style="display:none">
-          <label>Expiry Date</label><input id="expiryDate" type="date"/>
+          <label>Date</label><input id="expiryDate" type="date"/>
         </div>
         <div class="form-group" id="daysGroup" style="display:none">
-          <label>Days from now</label><input id="expiryDays" type="number" min="1" placeholder="30"/>
+          <label>Days</label><input id="expiryDays" type="number" min="1" placeholder="30"/>
         </div>
-        <button class="btn btn-primary" onclick="addKey()">Generate Key</button>
+        <button class="btn btn-primary" style="align-self:flex-end" onclick="addKey()">+ Generate Key</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Keys</div>
+      <div class="card-title">All Keys</div>
       <div class="toolbar">
         <input id="keySearch" type="text" placeholder="Search by key or email…" oninput="renderKeys()" style="flex:1;min-width:200px"/>
-        <select id="keyFilter" onchange="renderKeys()">
-          <option value="all">All</option>
+        <select id="keyFilter" onchange="renderKeys()" style="width:auto">
+          <option value="all">All statuses</option>
           <option value="redeemed">Redeemed</option>
           <option value="unredeemed">Unredeemed</option>
           <option value="blacklisted">Blacklisted</option>
@@ -169,8 +205,8 @@ tbody td{padding:10px 12px;vertical-align:middle}
     <div class="card">
       <div class="card-title">Bound HWIDs</div>
       <div class="toolbar">
-        <input id="hwidSearch" type="text" placeholder="Search by HWID, email, or username…" oninput="renderHwids()" style="flex:1;min-width:200px"/>
-        <select id="hwidFilter" onchange="renderHwids()">
+        <input id="hwidSearch" type="text" placeholder="Search HWID, email, or username…" oninput="renderHwids()" style="flex:1;min-width:200px"/>
+        <select id="hwidFilter" onchange="renderHwids()" style="width:auto">
           <option value="all">All</option>
           <option value="banned">Banned</option>
           <option value="active">Active</option>
@@ -189,194 +225,121 @@ tbody td{padding:10px 12px;vertical-align:middle}
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast"><div id="toast-dot"></div><span id="toast-text"></span></div>
 
 <script>
-const API = "https://pedro-license-production.up.railway.app";
-let token = sessionStorage.getItem("adminToken") || null;
-let allKeys = [], allHwids = [];
+const API="https://pedro-license-production.up.railway.app";
+let token=sessionStorage.getItem("adminToken")||null,allKeys=[],allHwids=[];
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-async function doLogin() {
-  const pw = document.getElementById("loginPw").value;
-  document.getElementById("loginErr").textContent = "";
-  try {
-    const r = await fetch(`${API}/auth/login`, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ password: pw }), credentials:"include"
-    });
-    if (!r.ok) { document.getElementById("loginErr").textContent = "Wrong password."; return; }
-    const d = await r.json();
-    token = d.token;
-    sessionStorage.setItem("adminToken", token);
-    showApp();
-  } catch { document.getElementById("loginErr").textContent = "Cannot reach server."; }
+async function doLogin(){
+  const pw=document.getElementById("loginPw").value;
+  document.getElementById("loginErr").textContent="";
+  try{
+    const r=await fetch(`${API}/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw}),credentials:"include"});
+    if(!r.ok){document.getElementById("loginErr").textContent="Wrong password.";return;}
+    const d=await r.json();token=d.token;sessionStorage.setItem("adminToken",token);showApp();
+  }catch{document.getElementById("loginErr").textContent="Cannot reach server.";}
 }
-async function doLogout() {
-  await fetch(`${API}/auth/logout`, { method:"POST", credentials:"include" }).catch(()=>{});
-  token = null; sessionStorage.removeItem("adminToken");
-  document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("appShell").style.display = "none";
+async function doLogout(){
+  await fetch(`${API}/auth/logout`,{method:"POST",credentials:"include"}).catch(()=>{});
+  token=null;sessionStorage.removeItem("adminToken");
+  document.getElementById("loginScreen").style.display="flex";
+  document.getElementById("appShell").style.display="none";
 }
-function showApp() {
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("appShell").style.display = "block";
-  loadAll();
+function showApp(){document.getElementById("loginScreen").style.display="none";document.getElementById("appShell").style.display="block";loadAll();}
+function af(url,opts={}){
+  const h={...(opts.headers||{}),"x-admin-token":token,"Content-Type":"application/json"};
+  return fetch(url,{...opts,headers:h,credentials:"include"}).then(r=>{if(r.status===401){doLogout();throw new Error("session expired");}return r;});
 }
-function af(url, opts={}) {
-  const h = { ...(opts.headers||{}), "x-admin-token": token, "Content-Type":"application/json" };
-  return fetch(url, {...opts, headers:h, credentials:"include"}).then(r => {
-    if (r.status === 401) { doLogout(); throw new Error("session expired"); }
-    return r;
-  });
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-function switchTab(name, el) {
+function switchTab(name,el){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".tab-panel").forEach(t=>t.classList.remove("active"));
-  el.classList.add("active");
-  document.getElementById("tab-"+name).classList.add("active");
+  el.classList.add("active");document.getElementById("tab-"+name).classList.add("active");
 }
-
-// ── Load ──────────────────────────────────────────────────────────────────────
-async function loadAll() {
-  try {
-    const [kr, hr] = await Promise.all([
-      af(`${API}/admin/keys`),
-      af(`${API}/admin/hwids`)
-    ]);
-    allKeys  = await kr.json();
-    allHwids = await hr.json();
-    updateStats();
-    renderKeys();
-    renderHwids();
-    document.getElementById("srvStatus").textContent = "● online";
-    document.getElementById("srvStatus").style.color = "var(--green)";
-  } catch(e) {
-    if (e.message !== "session expired") {
-      document.getElementById("srvStatus").textContent = "● offline";
-      document.getElementById("srvStatus").style.color = "var(--red)";
-    }
-  }
+function toast(msg,color="var(--accent)"){
+  document.getElementById("toast-text").textContent=msg;
+  document.getElementById("toast-dot").style.background=color;
+  const t=document.getElementById("toast");t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2800);
 }
-
-function updateStats() {
-  const now = Date.now();
-  document.getElementById("sTotal").textContent = allKeys.length;
-  document.getElementById("sActive").textContent = allKeys.filter(k=>!k.blacklisted&&(k.expiry===null||k.expiry>now)).length;
-  document.getElementById("sRedeemed").textContent = allKeys.filter(k=>k.email).length;
-  document.getElementById("sBlacklisted").textContent = allKeys.filter(k=>k.blacklisted).length;
+async function loadAll(){
+  try{
+    const[kr,hr]=await Promise.all([af(`${API}/admin/keys`),af(`${API}/admin/hwids`)]);
+    allKeys=await kr.json();allHwids=await hr.json();
+    updateStats();renderKeys();renderHwids();
+    document.getElementById("srvStatus").textContent="● online";
+    document.getElementById("srvStatus").style.color="var(--green)";
+  }catch(e){if(e.message!=="session expired"){document.getElementById("srvStatus").textContent="● offline";document.getElementById("srvStatus").style.color="var(--red)";}}
 }
-
-// ── Keys rendering ────────────────────────────────────────────────────────────
-function toggleExpiry() {
-  const v = document.getElementById("expiryType").value;
-  document.getElementById("dateGroup").style.display = v==="date" ? "" : "none";
-  document.getElementById("daysGroup").style.display = v==="days" ? "" : "none";
+function updateStats(){
+  const now=Date.now();
+  document.getElementById("sTotal").textContent=allKeys.length;
+  document.getElementById("sActive").textContent=allKeys.filter(k=>!k.blacklisted&&(k.expiry===null||k.expiry>now)).length;
+  document.getElementById("sRedeemed").textContent=allKeys.filter(k=>k.email).length;
+  document.getElementById("sBlacklisted").textContent=allKeys.filter(k=>k.blacklisted).length;
 }
-function getExpiry() {
-  const v = document.getElementById("expiryType").value;
-  if (v==="lifetime") return null;
-  if (v==="date") { const d=document.getElementById("expiryDate").value; return d?new Date(d).getTime():null; }
-  if (v==="days") { const n=parseInt(document.getElementById("expiryDays").value); return n>0?Date.now()+n*86400000:null; }
+function toggleExpiry(){
+  const v=document.getElementById("expiryType").value;
+  document.getElementById("dateGroup").style.display=v==="date"?"":"none";
+  document.getElementById("daysGroup").style.display=v==="days"?"":"none";
 }
-async function addKey() {
-  try {
-    const r = await af(`${API}/admin/add-key`, { method:"POST", body: JSON.stringify({ expiry: getExpiry() }) });
-    const d = await r.json();
-    toast(`Key generated: ${d.key}`);
-    loadAll();
-  } catch { toast("Failed to generate key","var(--red)"); }
+function getExpiry(){
+  const v=document.getElementById("expiryType").value;
+  if(v==="lifetime")return null;
+  if(v==="date"){const d=document.getElementById("expiryDate").value;return d?new Date(d).getTime():null;}
+  if(v==="days"){const n=parseInt(document.getElementById("expiryDays").value);return n>0?Date.now()+n*86400000:null;}
 }
-function renderKeys() {
-  const q = document.getElementById("keySearch").value.toLowerCase();
-  const f = document.getElementById("keyFilter").value;
-  const now = Date.now();
-  let keys = allKeys.filter(k => {
-    if (q && !k.key.toLowerCase().includes(q) && !(k.email||"").toLowerCase().includes(q)) return false;
-    if (f==="redeemed" && !k.email) return false;
-    if (f==="unredeemed" && k.email) return false;
-    if (f==="blacklisted" && !k.blacklisted) return false;
+async function addKey(){
+  try{const r=await af(`${API}/admin/add-key`,{method:"POST",body:JSON.stringify({expiry:getExpiry()})});const d=await r.json();toast(`Key: ${d.key}`);loadAll();}
+  catch{toast("Failed","var(--red)");}
+}
+function renderKeys(){
+  const q=document.getElementById("keySearch").value.toLowerCase(),f=document.getElementById("keyFilter").value,now=Date.now();
+  let keys=allKeys.filter(k=>{
+    if(q&&!k.key.toLowerCase().includes(q)&&!(k.email||"").toLowerCase().includes(q))return false;
+    if(f==="redeemed"&&!k.email)return false;if(f==="unredeemed"&&k.email)return false;if(f==="blacklisted"&&!k.blacklisted)return false;
     return true;
   });
-  if (!keys.length) { document.getElementById("keysBody").innerHTML=`<tr><td colspan="8" class="empty">No keys found.</td></tr>`; return; }
-  document.getElementById("keysBody").innerHTML = keys.map(k => {
-    const expired = k.expiry && k.expiry < now;
-    const status = k.blacklisted ? `<span class="pill pill-red">Blacklisted</span>`
-      : expired ? `<span class="pill pill-red">Expired</span>`
-      : `<span class="pill pill-green">Active</span>`;
-    const expiry = k.expiry ? new Date(k.expiry).toLocaleDateString() : `<span class="pill pill-green">Lifetime</span>`;
-    const hwid = k.hwid ? `<span class="small-text">${k.hwid.substring(0,16)}…</span>` : `<span class="small-text">—</span>`;
-    return `<tr>
-      <td><span class="key-mono" onclick="copyText('${k.key}')" title="Copy">${k.key}</span></td>
+  if(!keys.length){document.getElementById("keysBody").innerHTML=`<tr><td colspan="8" class="empty">No keys match.</td></tr>`;return;}
+  document.getElementById("keysBody").innerHTML=keys.map(k=>{
+    const exp=k.expiry&&k.expiry<now;
+    const status=k.blacklisted?`<span class="pill pill-red">Blacklisted</span>`:exp?`<span class="pill pill-red">Expired</span>`:`<span class="pill pill-green">Active</span>`;
+    const expiry=k.expiry?new Date(k.expiry).toLocaleDateString():`<span class="pill pill-green">Lifetime</span>`;
+    const hwid=k.hwid?`<span class="small-text" title="${k.hwid}">${k.hwid.substring(0,14)}…</span>`:`<span class="small-text">—</span>`;
+    return`<tr>
+      <td><span class="key-mono" onclick="copyText('${k.key}')" title="Click to copy">${k.key}</span></td>
       <td><span class="small-text">${k.email||'—'}</span></td>
       <td><span class="small-text">${k.mcUsername||'—'}</span></td>
-      <td>${hwid}</td>
-      <td>${status}</td>
-      <td>${expiry}</td>
+      <td>${hwid}</td><td>${status}</td><td>${expiry}</td>
       <td><span class="small-text">${new Date(k.createdAt).toLocaleDateString()}</span></td>
       <td><div class="actions-cell">
-        ${k.blacklisted
-          ? `<button class="btn btn-success btn-sm" onclick="blacklist('${k.id}',false)">Unblacklist</button>`
-          : `<button class="btn btn-danger btn-sm" onclick="blacklist('${k.id}',true)">Blacklist</button>`}
+        ${k.blacklisted?`<button class="btn btn-success btn-sm" onclick="blacklist('${k.id}',false)">Unblacklist</button>`:`<button class="btn btn-danger btn-sm" onclick="blacklist('${k.id}',true)">Blacklist</button>`}
         <button class="btn btn-danger btn-sm" onclick="delKey('${k.id}')">Delete</button>
-      </div></td>
-    </tr>`;
+      </div></td></tr>`;
   }).join("");
 }
-async function blacklist(id, val) {
-  await af(`${API}/admin/blacklist/${id}`, { method:"POST", body: JSON.stringify({ blacklisted: val }) });
-  toast(val ? "Blacklisted." : "Reinstated.", val ? "var(--red)" : "var(--green)");
-  loadAll();
-}
-async function delKey(id) {
-  if (!confirm("Delete this key?")) return;
-  await af(`${API}/admin/key/${id}`, { method:"DELETE" });
-  toast("Deleted.", "var(--red)"); loadAll();
-}
-
-// ── HWIDs rendering ───────────────────────────────────────────────────────────
-function renderHwids() {
-  const q = document.getElementById("hwidSearch").value.toLowerCase();
-  const f = document.getElementById("hwidFilter").value;
-  let list = allHwids.filter(h => {
-    if (q && !h.hwid.toLowerCase().includes(q) && !(h.email||"").toLowerCase().includes(q) && !(h.mcUsername||"").toLowerCase().includes(q)) return false;
-    if (f==="banned" && !h.banned) return false;
-    if (f==="active" && h.banned) return false;
-    return true;
+async function blacklist(id,val){await af(`${API}/admin/blacklist/${id}`,{method:"POST",body:JSON.stringify({blacklisted:val})});toast(val?"Blacklisted.":"Reinstated.",val?"var(--red)":"var(--green)");loadAll();}
+async function delKey(id){if(!confirm("Delete this key?"))return;await af(`${API}/admin/key/${id}`,{method:"DELETE"});toast("Deleted.","var(--red)");loadAll();}
+function renderHwids(){
+  const q=document.getElementById("hwidSearch").value.toLowerCase(),f=document.getElementById("hwidFilter").value;
+  let list=allHwids.filter(h=>{
+    if(q&&!h.hwid.toLowerCase().includes(q)&&!(h.email||"").toLowerCase().includes(q)&&!(h.mcUsername||"").toLowerCase().includes(q))return false;
+    if(f==="banned"&&!h.banned)return false;if(f==="active"&&h.banned)return false;return true;
   });
-  if (!list.length) { document.getElementById("hwidsBody").innerHTML=`<tr><td colspan="6" class="empty">No HWIDs found.</td></tr>`; return; }
-  document.getElementById("hwidsBody").innerHTML = list.map(h => `<tr>
-    <td><span class="key-mono" onclick="copyText('${h.hwid}')" title="Copy">${h.hwid.substring(0,20)}…</span></td>
+  if(!list.length){document.getElementById("hwidsBody").innerHTML=`<tr><td colspan="6" class="empty">No HWIDs found.</td></tr>`;return;}
+  document.getElementById("hwidsBody").innerHTML=list.map(h=>`<tr>
+    <td><span class="key-mono" onclick="copyText('${h.hwid}')" title="Click to copy">${h.hwid.substring(0,20)}…</span></td>
     <td><span class="small-text">${h.email||'—'}</span></td>
     <td><span class="small-text">${h.mcUsername||'—'}</span></td>
     <td><span class="key-mono">${h.key}</span></td>
-    <td>${h.banned ? `<span class="pill pill-red">Banned</span>` : `<span class="pill pill-green">Active</span>`}</td>
+    <td>${h.banned?`<span class="pill pill-red">Banned</span>`:`<span class="pill pill-green">Active</span>`}</td>
     <td><div class="actions-cell">
-      ${h.banned
-        ? `<button class="btn btn-success btn-sm" onclick="banHwid('${h.hwid}',false)">Unban</button>`
-        : `<button class="btn btn-danger btn-sm" onclick="banHwid('${h.hwid}',true)">Ban</button>`}
-    </div></td>
-  </tr>`).join("");
+      ${h.banned?`<button class="btn btn-success btn-sm" onclick="banHwid('${h.hwid}',false)">Unban</button>`:`<button class="btn btn-danger btn-sm" onclick="banHwid('${h.hwid}',true)">Ban</button>`}
+    </div></td></tr>`).join("");
 }
-async function banHwid(hwid, ban) {
-  await af(`${API}/admin/ban-hwid`, { method:"POST", body: JSON.stringify({ hwid, ban }) });
-  toast(ban ? "HWID banned." : "HWID unbanned.", ban ? "var(--red)" : "var(--green)");
-  loadAll();
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function copyText(t) { navigator.clipboard.writeText(t).then(()=>toast("Copied!")); }
-function toast(msg, color="var(--accent)") {
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.style.borderLeftColor = color;
-  el.classList.add("show"); setTimeout(()=>el.classList.remove("show"), 2800);
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-if (token) showApp(); else { document.getElementById("loginScreen").style.display="flex"; }
-setInterval(()=>{ if(token) loadAll(); }, 10000);
+async function banHwid(hwid,ban){await af(`${API}/admin/ban-hwid`,{method:"POST",body:JSON.stringify({hwid,ban})});toast(ban?"HWID banned.":"HWID unbanned.",ban?"var(--red)":"var(--green)");loadAll();}
+function copyText(t){navigator.clipboard.writeText(t).then(()=>toast("Copied!"));}
+if(token)showApp();else document.getElementById("loginScreen").style.display="flex";
+setInterval(()=>{if(token)loadAll();},10000);
 </script>
 </body>
 </html>
