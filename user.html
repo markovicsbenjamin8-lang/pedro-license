@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pedro Debug — Portal</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0f;--surface:#16181d;--surface2:#1e2028;--border:#2a2d38;
+  --accent:#ff6400;--accent-dim:#c44d00;--green:#22c55e;--red:#ef4444;
+  --yellow:#f59e0b;--text:#e8eaf0;--muted:#6b7280;--radius:10px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+.screen{display:none;flex:1;align-items:center;justify-content:center;padding:24px}
+.screen.active{display:flex}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:40px 36px;width:400px;max-width:95vw}
+.logo{font-size:22px;font-weight:800;margin-bottom:4px}.logo span{color:var(--accent)}
+.sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+.box h2{font-size:17px;font-weight:700;margin-bottom:18px}
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+label{font-size:12px;color:var(--muted);font-weight:500}
+input{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:10px 13px;font-size:14px;outline:none;transition:border-color .15s;width:100%}
+input:focus{border-color:var(--accent)}
+input::placeholder{color:var(--muted)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;padding:11px 20px;width:100%;transition:opacity .15s,transform .1s;margin-top:4px}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-dim)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{border-color:var(--accent)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{opacity:.9}
+.btn-sm{width:auto;padding:9px 16px;font-size:13px}
+.switch-link{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
+.switch-link a{color:var(--accent);cursor:pointer;text-decoration:none}
+.switch-link a:hover{text-decoration:underline}
+.msg{font-size:13px;margin-top:10px;min-height:18px;text-align:center;padding:8px;border-radius:6px;display:none}
+.msg.show{display:block}
+.msg.error{background:#7f1d1d33;color:var(--red);border:1px solid #ef444433}
+.msg.success{background:#14532d33;color:var(--green);border:1px solid #22c55e33}
+.msg.info{background:#1e293b;color:var(--muted)}
+.dash-header{display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.avatar{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0}
+.user-info .name{font-weight:700;font-size:15px}
+.user-info .email{font-size:12px;color:var(--muted);margin-top:2px}
+.logout-btn{margin-left:auto}
+.status-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.status-card .slabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.status-card .svalue{font-size:15px;font-weight:600}
+.pill{display:inline-block;padding:3px 11px;border-radius:99px;font-size:12px;font-weight:600}
+.pill-green{background:#14532d55;color:var(--green);border:1px solid #22c55e44}
+.pill-red{background:#7f1d1d55;color:var(--red);border:1px solid #ef444444}
+.pill-yellow{background:#78350f55;color:var(--yellow);border:1px solid #f59e0b44}
+.key-row{display:flex;gap:8px;margin-bottom:6px}
+.key-row input{flex:1}
+.download-btn{background:var(--green);color:#fff;font-size:15px;padding:13px;margin-top:8px}
+.download-btn:hover{opacity:.9}
+.download-btn:disabled{opacity:.4;cursor:not-allowed}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px 18px;font-size:13px;opacity:0;transform:translateY(8px);transition:opacity .25s,transform .25s;z-index:200;pointer-events:none;max-width:320px}
+#toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="screen active" id="screenLoading">
+  <div style="color:var(--muted);font-size:13px">Loading…</div>
+</div>
+
+<!-- Login -->
+<div class="screen" id="screenLogin">
+  <div class="box">
+    <div class="logo"><span>Pedro</span> Debug</div>
+    <div class="sub">Client portal</div>
+    <h2>Sign In</h2>
+    <div class="form-group">
+      <label>Email</label>
+      <input id="loginEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+    <div class="msg" id="loginMsg"></div>
+    <div class="switch-link">Don't have an account? <a onclick="showScreen('screenRegister')">Register</a></div>
+  </div>
+</div>
+
+<!-- Register -->
+<div class="screen" id="screenRegister">
+  <div class="box">
+    <div class="logo"><span>Pedro</span> Debug</div>
+    <div class="sub">Create your account</div>
+    <h2>Register</h2>
+    <div class="form-group">
+      <label>Email</label>
+      <input id="regEmail" type="email" placeholder="you@example.com"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="regPassword" type="password" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doRegister()"/>
+    </div>
+    <button class="btn btn-primary" onclick="doRegister()">Create Account</button>
+    <div class="msg" id="regMsg"></div>
+    <div class="switch-link">Already have an account? <a onclick="showScreen('screenLogin')">Sign In</a></div>
+  </div>
+</div>
+
+<!-- Redeem -->
+<div class="screen" id="screenRedeem">
+  <div class="box">
+    <div class="dash-header">
+      <div class="avatar" id="redeemAvatar">?</div>
+      <div class="user-info">
+        <div class="name" id="redeemName">—</div>
+        <div class="email" id="redeemEmail">—</div>
+      </div>
+      <button class="btn btn-ghost btn-sm logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+    <h2>Redeem License Key</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Enter the key you received to activate your account.</p>
+    <div class="key-row">
+      <input id="redeemInput" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19"
+        oninput="fmtKey(this)" onkeydown="if(event.key==='Enter')doRedeem()"/>
+      <button class="btn btn-primary btn-sm" onclick="doRedeem()">Redeem</button>
+    </div>
+    <div class="msg" id="redeemMsg"></div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="screen" id="screenDash">
+  <div class="box">
+    <div class="dash-header">
+      <div class="avatar" id="dashAvatar">?</div>
+      <div class="user-info">
+        <div class="name" id="dashName">—</div>
+        <div class="email" id="dashEmail">—</div>
+      </div>
+      <button class="btn btn-ghost btn-sm logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+    <div class="status-card">
+      <div class="slabel">License Status</div>
+      <div class="svalue" id="dashStatus">—</div>
+    </div>
+    <div class="status-card">
+      <div class="slabel">Expires</div>
+      <div class="svalue" id="dashExpiry">—</div>
+    </div>
+    <button class="btn download-btn" id="dlBtn" onclick="doDownload()">⬇ Download Pedro Debug</button>
+    <div class="msg" id="dashMsg"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = "http://localhost:3000";
+let userToken = sessionStorage.getItem("userToken") || null;
+let csrfToken = sessionStorage.getItem("csrfToken") || null;
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = "msg " + type + " show";
+}
+function hideMsg(id) {
+  const el = document.getElementById(id);
+  el.className = "msg"; el.textContent = "";
+}
+function toast(msg, color="var(--accent)") {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.borderLeftColor = color;
+  el.classList.add("show"); setTimeout(()=>el.classList.remove("show"), 3000);
+}
+function uf(url, opts={}) {
+  const h = {...(opts.headers||{}), "Content-Type":"application/json", "x-user-token": userToken||"", "x-csrf-token": csrfToken||""};
+  return fetch(url, {...opts, headers:h, credentials:"include"});
+}
+function fmtKey(input) {
+  let v = input.value.toUpperCase().replace(/[^A-Z0-9]/g,"");
+  let out = "";
+  for (let i=0;i<v.length&&i<16;i++) { if(i>0&&i%4===0) out+="-"; out+=v[i]; }
+  input.value = out;
+}
+
+async function doLogin() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pw    = document.getElementById("loginPassword").value;
+  hideMsg("loginMsg");
+  if (!email || !pw) { showMsg("loginMsg","Fill in all fields.","error"); return; }
+  try {
+    const r = await fetch(`${API}/user/login`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email, password: pw }), credentials:"include"
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      const msgs = {
+        invalid_credentials: "Wrong email or password.",
+        account_locked: `Too many failed attempts. Account locked for ${d.minutesLeft} minute(s).`,
+      };
+      showMsg("loginMsg", msgs[d.error] || "Login failed.", "error"); return;
+    }
+    userToken = d.token;
+    csrfToken = d.csrfToken;
+    sessionStorage.setItem("userToken", userToken);
+    sessionStorage.setItem("csrfToken", csrfToken);
+    await loadAndRoute();
+  } catch { showMsg("loginMsg","Cannot reach server.","error"); }
+}
+
+async function doRegister() {
+  const email = document.getElementById("regEmail").value.trim();
+  const pw    = document.getElementById("regPassword").value;
+  hideMsg("regMsg");
+  if (!email || !pw) { showMsg("regMsg","Fill in all fields.","error"); return; }
+  if (pw.length < 8) { showMsg("regMsg","Password must be at least 8 characters.","error"); return; }
+  if (!/[a-zA-Z]/.test(pw) || !/[0-9]/.test(pw)) { showMsg("regMsg","Password must contain at least one letter and one number.","error"); return; }
+  try {
+    const r = await fetch(`${API}/user/register`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email, password: pw }), credentials:"include"
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      const regMsgs = {
+        email_taken:       "An account with that email already exists.",
+        invalid_email:     "Enter a valid email address.",
+        password_too_short:"Password must be at least 8 characters.",
+        password_too_weak: "Password must contain at least one letter and one number.",
+      };
+      showMsg("regMsg", regMsgs[d.error] || "Registration failed.", "error"); return;
+    }
+    showMsg("regMsg","Account created! Signing you in…","success");
+    document.getElementById("loginEmail").value = email;
+    document.getElementById("loginPassword").value = pw;
+    setTimeout(doLogin, 800);
+  } catch { showMsg("regMsg","Cannot reach server.","error"); }
+}
+
+async function doLogout() {
+  await fetch(`${API}/user/logout`, { method:"POST", credentials:"include" }).catch(()=>{});
+  userToken = null; csrfToken = null;
+  sessionStorage.removeItem("userToken");
+  sessionStorage.removeItem("csrfToken");
+  showScreen("screenLogin");
+}
+
+async function loadAndRoute() {
+  try {
+    const r = await uf(`${API}/user/me`);
+    if (r.status === 401) { userToken=null; sessionStorage.removeItem("userToken"); showScreen("screenLogin"); return; }
+    const d = await r.json();
+    const initial = d.email.charAt(0).toUpperCase();
+    const name    = d.email.split("@")[0];
+    ["redeemAvatar","dashAvatar"].forEach(id => document.getElementById(id).textContent = initial);
+    ["redeemName","dashName"].forEach(id => document.getElementById(id).textContent = name);
+    ["redeemEmail","dashEmail"].forEach(id => document.getElementById(id).textContent = d.email);
+
+    if (!d.hasKey) { showScreen("screenRedeem"); return; }
+    // Also update csrfToken from me response
+    if (d.csrfToken) { csrfToken = d.csrfToken; sessionStorage.setItem("csrfToken", csrfToken); }
+
+    // Dashboard
+    const now = Date.now();
+    let statusHtml, canDl = false;
+    if (d.keyBlacklisted) {
+      statusHtml = `<span class="pill pill-red">Blacklisted</span>`;
+    } else if (d.keyExpired) {
+      statusHtml = `<span class="pill pill-red">Expired</span>`;
+    } else {
+      statusHtml = `<span class="pill pill-green">Active</span>`;
+      canDl = true;
+    }
+    document.getElementById("dashStatus").innerHTML = statusHtml;
+    document.getElementById("dashExpiry").textContent = d.expiry ? new Date(d.expiry).toLocaleDateString() : "Lifetime ∞";
+    const dlBtn = document.getElementById("dlBtn");
+    dlBtn.disabled = !canDl;
+    dlBtn.style.opacity = canDl ? "1" : "0.4";
+    dlBtn.style.cursor  = canDl ? "pointer" : "not-allowed";
+    showScreen("screenDash");
+  } catch { showScreen("screenLogin"); }
+}
+
+async function doRedeem() {
+  const key = document.getElementById("redeemInput").value.trim();
+  hideMsg("redeemMsg");
+  if (!key || key.length < 19) { showMsg("redeemMsg","Enter a valid key (XXXX-XXXX-XXXX-XXXX).","error"); return; }
+  try {
+    const r = await uf(`${API}/user/redeem`, { method:"POST", body: JSON.stringify({ key }) });
+    const d = await r.json();
+    if (r.ok) {
+      showMsg("redeemMsg","Key redeemed! Loading dashboard…","success");
+      setTimeout(loadAndRoute, 1200);
+    } else {
+      const msgs = {
+        invalid_key:      "Invalid key. Check you typed it correctly.",
+        already_used:     "This key has already been redeemed by another account.",
+        already_redeemed: "Your account already has an active key.",
+        blacklisted:      "This key has been blacklisted.",
+        expired:          "This key has expired.",
+      };
+      showMsg("redeemMsg", msgs[d.error] || "Something went wrong.", "error");
+    }
+  } catch { showMsg("redeemMsg","Cannot reach server.","error"); }
+}
+
+async function doDownload() {
+  showMsg("dashMsg","Preparing download…","info");
+  try {
+    const r = await uf(`${API}/user/download`);
+    if (!r.ok) { const d=await r.json(); showMsg("dashMsg",d.error||"Download failed.","error"); return; }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = "pedro-debug.jar";
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    showMsg("dashMsg","Download started!","success");
+    setTimeout(()=>hideMsg("dashMsg"), 3000);
+  } catch { showMsg("dashMsg","Download failed.","error"); }
+}
+
+// Init
+(async () => {
+  if (userToken) { await loadAndRoute(); }
+  else { showScreen("screenLogin"); }
+})();
+</script>
+</body>
+</html>

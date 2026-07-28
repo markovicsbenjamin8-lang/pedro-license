@@ -1,0 +1,5 @@
+node_modules/
+db.json
+pedro-debug-1.0.0.jar
+*.jar
+.env
